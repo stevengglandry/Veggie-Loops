@@ -962,6 +962,37 @@
     <footer class="footer"></footer>
 
     <script>
+        // --- Cache for Connection Elements ---
+        window.cableElementCache = {
+            out: new Map(),
+            in: new Map(),
+            mod_x: new Map(),
+            mod_y: new Map(),
+            mod_decay: new Map(),
+            mod_adsr: new Map(),
+            audio_out: new Map(),
+            audio_in: new Map()
+        };
+
+        function updateCableElementCache() {
+            window.cableElementCache.out.clear();
+            window.cableElementCache.in.clear();
+            window.cableElementCache.mod_x.clear();
+            window.cableElementCache.mod_y.clear();
+            window.cableElementCache.mod_decay.clear();
+            window.cableElementCache.mod_adsr.clear();
+            window.cableElementCache.audio_out.clear();
+            window.cableElementCache.audio_in.clear();
+
+            document.querySelectorAll('[id^="out_"]').forEach(el => window.cableElementCache.out.set(el.id, el));
+            document.querySelectorAll('[id^="in_"]').forEach(el => window.cableElementCache.in.set(el.id, el));
+            document.querySelectorAll('[id^="mod_x_"]').forEach(el => window.cableElementCache.mod_x.set(el.id, el));
+            document.querySelectorAll('[id^="mod_y_"]').forEach(el => window.cableElementCache.mod_y.set(el.id, el));
+            document.querySelectorAll('[id^="mod_decay_"]').forEach(el => window.cableElementCache.mod_decay.set(el.id, el));
+            document.querySelectorAll('[id^="mod_adsr_"]').forEach(el => window.cableElementCache.mod_adsr.set(el.id, el));
+            document.querySelectorAll('[id^="audio_out_"]').forEach(el => window.cableElementCache.audio_out.set(el.id, el));
+            document.querySelectorAll('[id^="audio_in_"]').forEach(el => window.cableElementCache.audio_in.set(el.id, el));
+        }
         // --- State & Config ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
@@ -1356,6 +1387,8 @@
                 panel.appendChild(content);
                 container.appendChild(panel);
             });
+
+            updateCableElementCache();
         }
 
         function autoSpawnTrackIfNeeded() {
@@ -1828,6 +1861,8 @@
 
                 container.appendChild(panel);
             });
+
+            updateCableElementCache();
         }
 
 
@@ -2385,6 +2420,7 @@
             };
             tracksContainer.appendChild(addBtn);
 
+            updateCableElementCache();
             updateFixedCables();
         }
 
@@ -2566,6 +2602,7 @@
                 panel.appendChild(controlsCont);
                 aside.appendChild(panel);
             });
+            updateCableElementCache();
             updateFixedCables();
         }
         renderFxPanels();
@@ -2984,23 +3021,26 @@
             }
         });
 
+
+
         function updateFixedCables() {
             const svg = document.getElementById('cable-svg');
+            // Optimise querySelectorAll if needed, but getElementById was the main concern
             svg.querySelectorAll('.fixed-cable').forEach(el => el.remove());
 
             state.drawers.forEach(drawer => {
                 if (drawer.connection) {
-                    const outEl = document.getElementById(`out_${drawer.id}`);
-                    let inEl = document.getElementById(`in_${drawer.connection}`);
+                    const outEl = window.cableElementCache.out.get(`out_${drawer.id}`);
+                    let inEl = window.cableElementCache.in.get(`in_${drawer.connection}`);
 
                     // Specific check for XY mod inputs
                     const track = state.tracks.find(t => t.id === drawer.connection);
                     if (track) {
-                        if (track.modLinks.x === drawer.id) inEl = document.getElementById(`mod_x_${track.id}`);
-                        else if (track.modLinks.y === drawer.id) inEl = document.getElementById(`mod_y_${track.id}`);
-                        else if (track.modLinks.decay === drawer.id) inEl = document.getElementById(`mod_decay_${track.id}`);
-                        else if (track.modLinks.adsr === drawer.id) inEl = document.getElementById(`mod_adsr_${track.id}`);
-                        else inEl = document.getElementById(`in_${track.id}`); // Default jack
+                        if (track.modLinks.x === drawer.id) inEl = window.cableElementCache.mod_x.get(`mod_x_${track.id}`);
+                        else if (track.modLinks.y === drawer.id) inEl = window.cableElementCache.mod_y.get(`mod_y_${track.id}`);
+                        else if (track.modLinks.decay === drawer.id) inEl = window.cableElementCache.mod_decay.get(`mod_decay_${track.id}`);
+                        else if (track.modLinks.adsr === drawer.id) inEl = window.cableElementCache.mod_adsr.get(`mod_adsr_${track.id}`);
+                        else inEl = window.cableElementCache.in.get(`in_${track.id}`); // Default jack
                     }
 
                     if (outEl && inEl) {
@@ -3015,8 +3055,8 @@
 
             state.tracks.forEach(track => {
                 if (track.audioRoute && track.audioRoute !== 'master') {
-                    const outEl = document.getElementById(`audio_out_${track.id}`);
-                    const inEl = document.getElementById(`audio_in_${track.audioRoute}`);
+                    const outEl = window.cableElementCache.audio_out.get(`audio_out_${track.id}`);
+                    const inEl = window.cableElementCache.audio_in.get(`audio_in_${track.audioRoute}`);
                     if (outEl && inEl) {
                         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                         path.setAttribute('class', 'cable-path fixed-cable');
@@ -4431,6 +4471,8 @@
                 container.scrollTop = container.scrollHeight;
             };
             container.appendChild(addBtn);
+
+            updateCableElementCache();
         }
 
         function updateManualMod(drawer) {
