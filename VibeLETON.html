@@ -1359,7 +1359,10 @@
         }
 
         function autoSpawnTrackIfNeeded() {
-            const allUsed = state.tracks.every(t => t.grid.some(row => row.some(s => typeof s === 'object' ? s.on : !!s)));
+            const synthTracks = state.tracks.filter(t => t.typeId !== 'drumSet' && t.typeId !== 'auxPerc');
+            if (synthTracks.length === 0) return;
+
+            const allUsed = synthTracks.every(t => t.grid.some(row => row.some(s => typeof s === 'object' ? s.on : !!s)));
             if (allUsed && state.tracks.length < 12) {
                 state.tracks.push(createTrack('synthwave'));
                 renderTracks();
@@ -1619,17 +1622,6 @@
                 if (changed) renderTracks();
             }
         });
-
-        function autoSpawnTrackIfNeeded() {
-            const synthTracks = state.tracks.filter(t => t.typeId !== 'Set' && t.typeId !== 'auxPerc');
-            if (synthTracks.length === 0) return;
-
-            const allUsed = synthTracks.every(t => t.grid.some(row => row.some(step => step === true || (typeof step === 'object' && step?.on))));
-            if (allUsed) {
-                state.tracks.push(createTrack('synthwave'));
-                renderTracks();
-            }
-        }
 
         function toggleHelp() {
             const modal = document.getElementById('help-modal');
