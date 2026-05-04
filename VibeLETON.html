@@ -2090,8 +2090,23 @@
 
                 // Panning Slider
                 const panGroup = document.createElement('div'); panGroup.className = 'slider-group'; panGroup.style.marginLeft = '4px';
-                panGroup.innerHTML = `<span class="label">PAN</span><input type="range" min="-1" max="1" step="0.1" value="${track.panNode.pan.value}" style="width:60px; height:3px;">`;
-                panGroup.querySelector('input').oninput = (e) => { track.panNode.pan.setTargetAtTime(parseFloat(e.target.value), audioCtx.currentTime, 0.05); };
+
+                const panLabel = document.createElement('span');
+                panLabel.className = 'label';
+                panLabel.textContent = 'PAN';
+                panGroup.appendChild(panLabel);
+
+                const panInput = document.createElement('input');
+                panInput.type = 'range';
+                panInput.min = '-1';
+                panInput.max = '1';
+                panInput.step = '0.1';
+                panInput.value = track.panNode.pan.value;
+                panInput.style.width = '60px';
+                panInput.style.height = '3px';
+                panGroup.appendChild(panInput);
+
+                panInput.oninput = (e) => { track.panNode.pan.setTargetAtTime(parseFloat(e.target.value), audioCtx.currentTime, 0.05); };
 
                 const xyGroup = document.createElement('div'); xyGroup.className = 'xy-group';
                 const xyCont = document.createElement('div'); xyCont.className = 'xy-container';
