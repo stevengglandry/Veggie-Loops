@@ -5064,6 +5064,18 @@
                 header.style.cursor = 'pointer';
                 header.ondblclick = () => { drawer.minimized = !drawer.minimized; renderDrawers(); };
 
+                const content = document.createElement('div');
+                content.className = 'panel-content';
+                const canvas = document.createElement('canvas');
+                canvas.className = 'drawer-canvas';
+                canvas.id = `canvas_${drawer.id}`;
+                content.appendChild(canvas);
+                const hint = document.createElement('div');
+                hint.style.cssText = 'padding:4px 8px; font-size:0.6rem; color:#444;';
+                const hintStrong = document.createElement('strong');
+                hintStrong.style.color = 'var(--text-dim)';
+                hintStrong.textContent = drawer.sync ? '1 BAR' : 'FREE';
+                hint.append(hintStrong, ' | PAINT CURVE TO MODIFY');
                 const { content, canvas, hint } = _createDrawerContent(drawer);
                 if (!drawer.minimized) {
                     panel.append(header, content, hint);
