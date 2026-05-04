@@ -1366,17 +1366,6 @@
             }
         }
 
-        function fillTrackPattern(track) {
-            const subdiv = track.subdiv || 4;
-            const firstMeasureLength = Math.round(state.timeSignature * subdiv);
-            for (let r = 0; r < track.grid.length; r++) {
-                for (let s = firstMeasureLength; s < 256; s++) {
-                    track.grid[r][s] = JSON.parse(JSON.stringify(track.grid[r][s % firstMeasureLength]));
-                }
-            }
-        }
-
-
         function createTrack(typeId) {
             const template = instrumentTypes[typeId];
             const track = {
