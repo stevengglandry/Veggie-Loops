@@ -1394,6 +1394,9 @@
 
                 const panelHeader = document.createElement('div');
                 panelHeader.className = 'panel-header';
+                const span = document.createElement('span');
+                span.textContent = unit.type.toUpperCase();
+                panelHeader.appendChild(span);
                 const spanHeader = document.createElement('span');
                 spanHeader.textContent = unit.type.toUpperCase();
                 panelHeader.appendChild(spanHeader);
