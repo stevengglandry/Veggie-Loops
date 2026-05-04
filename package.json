@@ -5,6 +5,9 @@
   "main": "benchmark.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test"
   },
   "repository": {
     "type": "git",
@@ -20,5 +23,7 @@
   "homepage": "https://github.com/stevengglandry/Veggie-Loops#readme",
   "dependencies": {
     "playwright": "^1.59.1"
+  "devDependencies": {
+    "@playwright/test": "^1.59.1"
   }
 }
