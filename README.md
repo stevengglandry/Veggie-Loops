@@ -1,7 +1,22 @@
 # VibeLETON DAW 🎵 AKA "Veggie Loops" 
 **Premium Web-Based Music Production Environment**
 
-VibeLETON is a high-performance, vibe-coded, single-file Digital Audio Workstation (DAW) built with the Web Audio API. It combines physical modeling synthesis, modular modulation routing, and an advanced sequencing engine into a stunning, glassmorphic interface. First principles are ease of use, flexibility, and fun. 
+VibeLETON is a high-performance, vibe-coded, single-.html-file Digital Audio Workstation (DAW) built with the Web Audio API. It combines the tactile workflow of classic hardware grooveboxes/modular synths with generative algorithmic composition tools, allowing for rapid prototyping of rhythm, melody, and complex modulation. First principles are ease of use, flexibility, and fun. 
+
+[ GENERATIVE ENGINES ]        [ INSTRUMENT TRACKS ]        [ MASTER EFFECTS ]
+      (Logic)                       (Audio)                    (Processing)
+ ┌────────────────┐          ┌───────────────────┐        ┌──────────────────┐
+ │  - Musical     │          │ - Drum Set        │        │  1. Delay        │
+ │  - Euclidean   ├────────▶│ - Sub Bass        ├──────▶ │  2. Reverb       │
+ │  - Chaotic     │          │ - Lead synth      │        │  3. Distortion   │
+ │  - Acid        │          │ - etc.            │        │  4. Chorus       │
+ └────────────────┘          └─────────┬─────────┘        │  5. Compression  │
+                                       │                  └────────┬─────────┘
+ [ MODULATION ]                        │                           │
+ ┌─────────────────┐                   │                           │
+ │ - LFO (Sine/Saw)│───────────────────┘                           ▼
+ │ - Paintable Env │                                           [ AUDIO OUT ]
+ └─────────────────┘
 
 ## 🚀 Recently Added Features
 
@@ -27,17 +42,20 @@ Modulation drawers are no longer just for tracks.
 - **XY Pad Mode**: Toggle between curve-based automation and tactile XY radar control for expressive live filtering.
 
 ### ⚡ Expressive Randomization 2.0
+- **Generative Settings** Logic: Switch between standard Musical timing, Euclidean rhythms (mathematically distributed hits), or Chaotic/Acid modes for generative patterns.
+- **Real-time Interaction:** Use DENS (Density), SPRD (Spread), and JITR (Jitter) to add human-like variance or total entropy to your sequences.
 - **Rand Mode**: Choose between `Replace` (generate new patterns) or `Add` (layer notes onto existing ones).
 - **Loop Reset**: Toggle `Rand on Loop` to generate a fresh variation every time the sequencer wraps.
-- **Humanization**: Per-note Jitter and Glissando controls for organic, non-mechanical feel.
-
----
+- **Humanization**: Per-note Jitter and Glissando controls for interesting feel.
 
 ## 🎹 Core Engine Features
+- ***Drums & Percussion***: Dedicated kits including 808 Deep, Industrial, and Lofi sets with individual control over Snare, Kick, and Hats.
+- ***Melodic Instrument FM Synthesis Engines***: * e.,g., 80s Lead: Classic subtractive synthesis with adjustable ADSR and Glissando w/ built in Side Chain to kick drum toggle. Physical Modeling: Options for FM Plucks, Chiptune Arps, and Ethereal Pads.
 - **Key & Scale Folding**: Grid dynamically hides out-of-key notes based on the global Scale/Key selector.
 - **Sidechain Engine**: Built-in ducking system triggered by the Kick drum, with dedicated Sidechain FX pedals.
 - **Modular FX Pedals**: Chainable Tape Echo, Bitcrusher, Overdrive, Chorus, and Reverb.
 - **Responsive Canvas**: All visualizers (Oscilloscope, Spectrum, and Filter Graphs) render at high-DPR for crisp visuals.
+- ***Export & Batch***: High-quality EXPORT functionality and BATCH SCENES for arranging and sharing loops/full songs as .mp3.
 
 ## ⌨️ Quick Controls
 - **Space**: Play / Stop
