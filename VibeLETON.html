@@ -4362,7 +4362,10 @@
                 content.appendChild(canvas);
                 const hint = document.createElement('div');
                 hint.style.cssText = 'padding:4px 8px; font-size:0.6rem; color:#444;';
-                hint.innerHTML = `<strong style="color:var(--text-dim)">${drawer.sync ? '1 BAR' : 'FREE'}</strong> | PAINT CURVE TO MODIFY`;
+                const hintStrong = document.createElement('strong');
+                hintStrong.style.color = 'var(--text-dim)';
+                hintStrong.textContent = drawer.sync ? '1 BAR' : 'FREE';
+                hint.append(hintStrong, ' | PAINT CURVE TO MODIFY');
                 if (!drawer.minimized) {
                     panel.append(header, content, hint);
                 } else {
