@@ -1748,9 +1748,23 @@
                 const rateMin = drawer.sync ? 1 : 0.1;
                 const rateMax = drawer.sync ? 16 : 20;
                 const rateStep = drawer.sync ? 1 : 0.1;
-                rateWrap.innerHTML = `<span style="font-size:0.5rem; color:var(--text-dim)">${rateLabel}</span>
-                                      <input type="range" min="${rateMin}" max="${rateMax}" step="${rateStep}" value="${drawer.waveRate || 1}" style="width:40px; height:3px;">`;
-                rateWrap.querySelector('input').oninput = (e) => { 
+
+                const labelSpan = document.createElement('span');
+                labelSpan.style.cssText = 'font-size:0.5rem; color:var(--text-dim)';
+                labelSpan.textContent = rateLabel;
+
+                const rangeInput = document.createElement('input');
+                rangeInput.type = 'range';
+                rangeInput.min = rateMin;
+                rangeInput.max = rateMax;
+                rangeInput.step = rateStep;
+                rangeInput.value = drawer.waveRate || 1;
+                rangeInput.style.cssText = 'width:40px; height:3px;';
+
+                rateWrap.appendChild(labelSpan);
+                rateWrap.appendChild(rangeInput);
+
+                rangeInput.oninput = (e) => {
                     drawer.waveRate = parseFloat(e.target.value); 
                     if (drawer.sync && drawer.waveType !== 'none') generateWaveformPoints(drawer);
                 };
@@ -4279,12 +4293,29 @@
                 const rateMin = drawer.sync ? 0.25 : 0.1;
                 const rateMax = drawer.sync ? 16 : 20;
                 const rateStep = drawer.sync ? 0.25 : 0.1;
-                rateWrap.innerHTML = `<span style="font-size:0.5rem; color:var(--text-dim)">${rateLabel}</span>
-                                      <input type="range" min="${rateMin}" max="${rateMax}" step="${rateStep}" value="${drawer.waveRate}" style="width:40px; height:3px;">
-                                      <span style="font-size:0.5rem; color:var(--accent-yellow); min-width:15px; text-align:left;">${drawer.waveRate}</span>`;
-                rateWrap.querySelector('input').oninput = (e) => {
+                const labelSpan = document.createElement('span');
+                labelSpan.style.cssText = 'font-size:0.5rem; color:var(--text-dim)';
+                labelSpan.textContent = rateLabel;
+
+                const rangeInput = document.createElement('input');
+                rangeInput.type = 'range';
+                rangeInput.min = rateMin;
+                rangeInput.max = rateMax;
+                rangeInput.step = rateStep;
+                rangeInput.value = drawer.waveRate;
+                rangeInput.style.cssText = 'width:40px; height:3px;';
+
+                const valSpan = document.createElement('span');
+                valSpan.style.cssText = 'font-size:0.5rem; color:var(--accent-yellow); min-width:15px; text-align:left;';
+                valSpan.textContent = drawer.waveRate;
+
+                rateWrap.appendChild(labelSpan);
+                rateWrap.appendChild(rangeInput);
+                rateWrap.appendChild(valSpan);
+
+                rangeInput.oninput = (e) => {
                     drawer.waveRate = parseFloat(e.target.value);
-                    rateWrap.querySelector('span:last-child').textContent = drawer.waveRate;
+                    valSpan.textContent = drawer.waveRate;
                     if (drawer.sync && drawer.waveType !== 'none') {
                         generateWaveformPoints(drawer);
                         const canvas = document.getElementById(`canvas_${drawer.id}`);
