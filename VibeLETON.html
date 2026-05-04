@@ -1278,14 +1278,23 @@
         }
         updateInstrumentRows();
 
+        let cachedBeatCounterContainer = null;
+        let cachedBeatPips = [];
+
         function renderBeatCounter() {
-            const container = document.getElementById('beat-counter');
-            if (!container) return;
-            container.innerHTML = '';
+            if (!cachedBeatCounterContainer) {
+                cachedBeatCounterContainer = document.getElementById('beat-counter');
+            }
+            if (!cachedBeatCounterContainer) return;
+
+            cachedBeatCounterContainer.innerHTML = '';
+            cachedBeatPips = [];
+
             for (let i = 0; i < state.timeSignature; i++) {
                 const pip = document.createElement('div');
                 pip.className = 'beat-pip' + (i === Math.floor(state.currentStep / state.stepsPerBeat) % state.timeSignature ? ' active' : '');
-                container.appendChild(pip);
+                cachedBeatCounterContainer.appendChild(pip);
+                cachedBeatPips.push(pip);
             }
         }
 
@@ -2570,16 +2579,6 @@
         }
         renderFxPanels();
 
-        function renderBeatCounter() {
-            const container = document.getElementById('beat-counter');
-            if (!container) return;
-            container.innerHTML = '';
-            for (let i = 0; i < state.timeSignature; i++) {
-                const pip = document.createElement('div');
-                pip.className = 'beat-pip';
-                container.appendChild(pip);
-            }
-        }
         renderBeatCounter();
 
         // --- Scene Management ---
@@ -3679,8 +3678,7 @@
 
                 if (state.isPlaying) {
                     const currentBeat = Math.floor((step % state.totalSteps) / state.stepsPerBeat);
-                    const beatPips = document.querySelectorAll('#beat-counter .beat-pip');
-                    beatPips.forEach((pip, idx) => {
+                    cachedBeatPips.forEach((pip, idx) => {
                         if (idx === currentBeat) pip.classList.add('active');
                         else pip.classList.remove('active');
                     });
