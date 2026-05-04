@@ -2570,18 +2570,6 @@
         }
         renderFxPanels();
 
-        function renderBeatCounter() {
-            const container = document.getElementById('beat-counter');
-            if (!container) return;
-            container.innerHTML = '';
-            for (let i = 0; i < state.timeSignature; i++) {
-                const pip = document.createElement('div');
-                pip.className = 'beat-pip';
-                container.appendChild(pip);
-            }
-        }
-        renderBeatCounter();
-
         // --- Scene Management ---
         function saveScene(idx) {
             state.scenes[idx] = state.tracks.map(t => ({
