@@ -2387,6 +2387,7 @@
                 const panLabel = document.createElement('span');
                 panLabel.className = 'label';
                 panLabel.textContent = 'PAN';
+                panGroup.appendChild(panLabel);
 
                 const panInput = document.createElement('input');
                 panInput.type = 'range';
@@ -2394,6 +2395,8 @@
                 panInput.max = '1';
                 panInput.step = '0.1';
                 panInput.value = track.panNode.pan.value;
+                panInput.style.width = '60px';
+                panInput.style.height = '3px';
                 panInput.style.cssText = 'width:60px; height:3px;';
 
                 panGroup.appendChild(panLabel);
