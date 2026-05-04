@@ -1,0 +1,24 @@
+{
+  "name": "app",
+  "version": "1.0.0",
+  "description": "**Premium Web-Based Music Production Environment**",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stevengglandry/Veggie-Loops.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/stevengglandry/Veggie-Loops/issues"
+  },
+  "homepage": "https://github.com/stevengglandry/Veggie-Loops#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.59.1"
+  }
+}
