@@ -1899,8 +1899,21 @@
                 }
 
                 const volGroup = document.createElement('div'); volGroup.className = 'slider-group';
-                volGroup.innerHTML = `<span class="label">VOL</span><input type="range" min="0" max="1" step="0.05" value="${track.volume}" style="width:60px;">`;
-                volGroup.querySelector('input').oninput = (e) => { track.volume = parseFloat(e.target.value); track.gainNode.gain.value = track.volume; };
+
+                const volLabel = document.createElement('span');
+                volLabel.className = 'label';
+                volLabel.textContent = 'VOL';
+
+                const volInput = document.createElement('input');
+                volInput.type = 'range';
+                volInput.min = '0';
+                volInput.max = '1';
+                volInput.step = '0.05';
+                volInput.value = track.volume;
+                volInput.style.width = '60px';
+                volInput.oninput = (e) => { track.volume = parseFloat(e.target.value); track.gainNode.gain.value = track.volume; };
+
+                volGroup.append(volLabel, volInput);
 
                 let adsrGroup = null;
                 if (track.adsr) {
