@@ -1543,8 +1543,12 @@
 
             // Delete / Backspace
             if ((e.key === 'Delete' || e.key === 'Backspace') && state.selection.notes.length > 0) {
+                const trackMap = Object.create(null);
+                for (let i = 0; i < state.tracks.length; i++) {
+                    trackMap[state.tracks[i].id] = state.tracks[i];
+                }
                 state.selection.notes.forEach(n => {
-                    const t = state.tracks.find(tr => tr.id === n.trackId);
+                    const t = trackMap[n.trackId];
                     if (t) t.grid[n.row][n.step] = { on: false, length: 1.0 };
                 });
                 state.selection.notes = [];
@@ -1560,8 +1564,12 @@
                     if (n.row < minR) minR = n.row;
                     if (n.step < minS) minS = n.step;
                 });
+                const trackMap = Object.create(null);
+                for (let i = 0; i < state.tracks.length; i++) {
+                    trackMap[state.tracks[i].id] = state.tracks[i];
+                }
                 state.selection.clipboard = state.selection.notes.map(n => {
-                    const t = state.tracks.find(tr => tr.id === n.trackId);
+                    const t = trackMap[n.trackId];
                     const data = t ? t.grid[n.row][n.step] : { on: true, length: 1 };
                     return {
                         relRow: n.row - minR,
@@ -2282,9 +2290,14 @@
                                             state.dragSelection.startRow = rIdx;
                                             state.dragSelection.trackId = track.id;
                                             
+                                            const trackMap = Object.create(null);
+                                            for (let i = 0; i < state.tracks.length; i++) {
+                                                trackMap[state.tracks[i].id] = state.tracks[i];
+                                            }
+
                                             // Capture initial states of all selected notes
                                             const initialNotes = state.selection.notes.map(n => {
-                                                const tr = state.tracks.find(t => t.id === n.trackId);
+                                                const tr = trackMap[n.trackId];
                                                 return { ...n, data: JSON.parse(JSON.stringify(tr.grid[n.row][n.step])) };
                                             });
 
@@ -2296,14 +2309,14 @@
 
                                                 // Clear current grid positions of selection
                                                 initialNotes.forEach(n => {
-                                                    const tr = state.tracks.find(t => t.id === n.trackId);
+                                                    const tr = trackMap[n.trackId];
                                                     tr.grid[n.row][n.step] = { on: false, length: 1.0 };
                                                 });
 
                                                 // Place at new positions
                                                 const newSelection = [];
                                                 initialNotes.forEach(n => {
-                                                    const tr = state.tracks.find(t => t.id === n.trackId);
+                                                    const tr = trackMap[n.trackId];
                                                     const nr = n.row + dr;
                                                     const ns = n.step + ds;
                                                     if (tr.grid[nr] && ns >= 0 && ns < 256) {
