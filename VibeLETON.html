@@ -1059,6 +1059,7 @@
                 trackId: null
             },
             hoveredGrid: null, // { trackId, row, step }
+            lookup: { tracks: new Map(), fxUnits: new Map(), drawers: new Map() }
             lookup: {
                 tracks: new Map(),
                 fxUnits: new Map(),
@@ -1070,6 +1071,9 @@
             state.lookup.tracks.clear();
             state.lookup.fxUnits.clear();
             state.lookup.drawers.clear();
+            state.tracks.forEach(t => state.lookup.tracks.set(t.id, t));
+            state.fxUnits.forEach(u => state.lookup.fxUnits.set(u.id, u));
+            state.drawers.forEach(d => state.lookup.drawers.set(d.id, d));
 
             for (let i = 0; i < state.tracks.length; i++) {
                 state.lookup.tracks.set(state.tracks[i].id, state.tracks[i]);
@@ -1093,6 +1097,7 @@
 
         // --- Modular FX Pedal System ---
         function createFxUnit(type = 'delay') {
+            const unitId = 'fx_' + Math.floor(Math.random() * 10000);
             const input = audioCtx.createGain();
             const output = audioCtx.createGain();
             const wetGain = audioCtx.createGain();
@@ -1102,7 +1107,7 @@
             dryGain.connect(output);
             wetGain.connect(output);
             const unit = {
-                id: 'fx_' + Math.floor(Math.random() * 10000),
+                id: unitId,
                 type: type,
                 input: input,
                 output: output,
@@ -1254,6 +1259,8 @@
             unit.nodes.convolver.buffer = impulse;
         }
 
+        state.fxUnits = [createFxUnit('delay'), createFxUnit('reverb'), createFxUnit('distortion'), createFxUnit('chorus'), createFxUnit('compressor')];
+        refreshLookupMap();
         state.fxUnits = [createFxUnit('delay'), createFxUnit('reverb'), createFxUnit('distortion'), createFxUnit('chorus'), createFxUnit('compressor')]; refreshLookupMap();
 
         // --- Track Data Models ---
@@ -1444,6 +1451,8 @@
 
             const allUsed = synthTracks.every(t => t.grid.some(row => row.some(s => typeof s === 'object' ? s.on : !!s)));
             if (allUsed && state.tracks.length < 12) {
+                state.tracks.push(createTrack('synthwave'));
+                refreshLookupMap();
                 state.tracks.push(createTrack('synthwave')); refreshLookupMap();
                 renderTracks();
             }
@@ -1451,8 +1460,9 @@
 
         function createTrack(typeId) {
             const template = instrumentTypes[typeId];
+            const trackId = 'trk_' + Math.floor(Math.random() * 10000);
             const track = {
-                id: 'trk_' + Math.floor(Math.random() * 10000),
+                id: trackId,
                 typeId: typeId,
                 volume: 0.8, swing: 0, muted: false, solo: false,
                 subdiv: 4, // 1/16 default
@@ -1514,6 +1524,11 @@
         // --- Sidechain Trigger ---
         // Sidechain trigger is now unified and triggered by playSound for Kick drum
 
+        state.tracks.push(createTrack('drumSet'));
+        state.tracks.push(createTrack('auxPerc'));
+        state.tracks.push(createTrack('synthwave'));
+        state.tracks.push(createTrack('bass'));
+        refreshLookupMap();
         state.tracks.push(createTrack('drumSet')); refreshLookupMap();
         state.tracks.push(createTrack('auxPerc')); refreshLookupMap();
         state.tracks.push(createTrack('synthwave')); refreshLookupMap();
@@ -1710,6 +1725,8 @@
 
             const allUsed = synthTracks.every(t => t.grid.some(row => row.some(step => step === true || (typeof step === 'object' && step?.on))));
             if (allUsed) {
+                state.tracks.push(createTrack('synthwave'));
+                refreshLookupMap();
                 state.tracks.push(createTrack('synthwave')); refreshLookupMap();
                 renderTracks();
             }
@@ -1739,6 +1756,8 @@
         function autoSpawnDrawerIfNeeded() {
             const allUsed = state.drawers.every(d => d.connection);
             if (allUsed && state.drawers.length < 8) {
+                state.drawers.push(createDrawer());
+                refreshLookupMap();
                 state.drawers.push(createDrawer()); refreshLookupMap();
                 renderDrawers();
             }
@@ -2697,6 +2716,8 @@
             addBtn.appendChild(spanPlus);
             addBtn.appendChild(document.createTextNode(' ADD INSTRUMENT TRACK'));
             addBtn.onclick = () => {
+                state.tracks.push(createTrack('synthwave'));
+                refreshLookupMap();
                 state.tracks.push(createTrack('synthwave')); refreshLookupMap();
                 renderTracks();
             };
@@ -5074,6 +5095,8 @@
             addBtn.onmouseover = () => { addBtn.style.background = 'rgba(0, 242, 255, 0.1)'; addBtn.style.borderColor = 'var(--accent-cyan)'; };
             addBtn.onmouseout = () => { addBtn.style.background = 'rgba(0, 242, 255, 0.05)'; addBtn.style.borderColor = 'rgba(0, 242, 255, 0.3)'; };
             addBtn.onclick = () => {
+                state.drawers.push(createDrawer());
+                refreshLookupMap();
                 state.drawers.push(createDrawer()); refreshLookupMap();
                 renderDrawers();
                 // Scroll to bottom
