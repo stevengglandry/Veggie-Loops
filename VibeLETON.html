@@ -1692,8 +1692,12 @@
             state.tracks.forEach(t => {
                 if (t.sidechainEnabled && t.sidechainNode) {
                     const g = t.sidechainNode.gain;
-                    g.cancelScheduledValues(time);
-                    g.setValueAtTime(g.value, time);
+                    if (typeof g.cancelAndHoldAtTime === 'function') {
+                        g.cancelAndHoldAtTime(time);
+                    } else {
+                        g.cancelScheduledValues(time);
+                        try { g.setValueAtTime(g.value, time); } catch(e) {}
+                    }
                     g.exponentialRampToValueAtTime(0.2, time + 0.01);
                     g.exponentialRampToValueAtTime(1.0, time + 0.2);
                 }
@@ -3840,7 +3844,12 @@
             state.activeNotes.forEach((voice, voiceId) => {
                 const now = audioCtx.currentTime;
                 try {
-                    voice.gain.gain.cancelScheduledValues(now);
+                    if (typeof voice.gain.gain.cancelAndHoldAtTime === 'function') {
+                        voice.gain.gain.cancelAndHoldAtTime(now);
+                    } else {
+                        voice.gain.gain.cancelScheduledValues(now);
+                        try { voice.gain.gain.setValueAtTime(voice.gain.gain.value, now); } catch(e) {}
+                    }
                     voice.gain.gain.setTargetAtTime(0, now, 0.01); 
                     voice.nodes.forEach(n => { if (n.stop) n.stop(now + 0.1); });
                     if (voice.lfo) voice.lfo.stop(now + 0.1);
@@ -3860,7 +3869,12 @@
                     const rSecs = adsr ? Math.max(0.01, adsr.r * beatDur) : 0.02;
                     
                     try {
-                        voice.gain.gain.cancelScheduledValues(targetTime);
+                        if (typeof voice.gain.gain.cancelAndHoldAtTime === 'function') {
+                            voice.gain.gain.cancelAndHoldAtTime(targetTime);
+                        } else {
+                            voice.gain.gain.cancelScheduledValues(targetTime);
+                            try { voice.gain.gain.setValueAtTime(voice.gain.gain.value, targetTime); } catch(e) {}
+                        }
                         voice.gain.gain.setTargetAtTime(0, targetTime, rSecs / 3); 
                         
                         const stopTime = targetTime + rSecs * 2; // Extra buffer
@@ -3993,7 +4007,12 @@
             state.tracks.forEach(track => {
                 if (track.sidechainEnabled && track.sidechainNode) {
                     const node = track.sidechainNode;
-                    node.gain.cancelScheduledValues(time);
+                    if (typeof node.gain.cancelAndHoldAtTime === 'function') {
+                        node.gain.cancelAndHoldAtTime(time);
+                    } else {
+                        node.gain.cancelScheduledValues(time);
+                        try { node.gain.setValueAtTime(node.gain.value, time); } catch(e) {}
+                    }
                     node.gain.setValueAtTime(1.0, time);
                     node.gain.exponentialRampToValueAtTime(0.001, time + 0.01);
                     node.gain.exponentialRampToValueAtTime(1.0, time + beatDur * 0.2);
