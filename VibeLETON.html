@@ -4454,13 +4454,6 @@
 
         window.addEventListener('mouseup', () => { activeDrawingDrawerId = null; });
 
-        function resizeCanvas() {
-            oscCanvas.width = oscCanvas.offsetWidth; oscCanvas.height = oscCanvas.offsetHeight;
-            specCanvas.width = specCanvas.offsetWidth; specCanvas.height = specCanvas.offsetHeight;
-            renderDrawers();
-        }
-        window.onload = () => { resizeCanvas(); renderTracks(); renderDrawers(); renderBeatCounter(); renderFxPanels(); };
-
         function drawVisuals() {
             requestAnimationFrame(drawVisuals);
             masterAnalyser.getByteTimeDomainData(masterDataArray);
