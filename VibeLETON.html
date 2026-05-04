@@ -1548,12 +1548,9 @@
 
             // Delete / Backspace
             if ((e.key === 'Delete' || e.key === 'Backspace') && state.selection.notes.length > 0) {
-                const trackMap = Object.create(null);
-                for (let i = 0; i < state.tracks.length; i++) {
-                    trackMap[state.tracks[i].id] = state.tracks[i];
-                }
+                const trackMap = new Map(state.tracks.map(t => [t.id, t]));
                 state.selection.notes.forEach(n => {
-                    const t = trackMap[n.trackId];
+                    const t = trackMap.get(n.trackId);
                     if (t) t.grid[n.row][n.step] = { on: false, length: 1.0 };
                 });
                 state.selection.notes = [];
@@ -1572,12 +1569,9 @@
                     if (n.row < minR) minR = n.row;
                     if (n.step < minS) minS = n.step;
                 });
-                const trackMap = Object.create(null);
-                for (let i = 0; i < state.tracks.length; i++) {
-                    trackMap[state.tracks[i].id] = state.tracks[i];
-                }
+                const trackMap = new Map(state.tracks.map(t => [t.id, t]));
                 state.selection.clipboard = state.selection.notes.map(n => {
-                    const t = trackMap[n.trackId];
+                    const t = trackMap.get(n.trackId);
                     const data = t ? t.grid[n.row][n.step] : { on: true, length: 1 };
                     return {
                         relRow: n.row - minR,
