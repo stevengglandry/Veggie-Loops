@@ -1281,7 +1281,7 @@
         function renderBeatCounter() {
             const container = document.getElementById('beat-counter');
             if (!container) return;
-            container.innerHTML = '';
+            container.textContent = '';
             for (let i = 0; i < state.timeSignature; i++) {
                 const pip = document.createElement('div');
                 pip.className = 'beat-pip' + (i === Math.floor(state.currentStep / state.stepsPerBeat) % state.timeSignature ? ' active' : '');
@@ -1322,11 +1322,18 @@
         function renderFxPanels() {
             const container = document.getElementById('fx-aside');
             if (!container) return;
-            container.innerHTML = '';
+            container.textContent = '';
             state.fxUnits.forEach(unit => {
                 const panel = document.createElement('div');
                 panel.className = 'panel fx-panel';
-                panel.innerHTML = `<div class="panel-header"><span>${unit.type.toUpperCase()}</span></div>`;
+
+                const panelHeader = document.createElement('div');
+                panelHeader.className = 'panel-header';
+                const spanHeader = document.createElement('span');
+                spanHeader.textContent = unit.type.toUpperCase();
+                panelHeader.appendChild(spanHeader);
+                panel.appendChild(panelHeader);
+
                 const content = document.createElement('div');
                 content.className = 'panel-content';
                 content.style.height = 'auto';
@@ -1345,12 +1352,25 @@
                     else if (key === 'threshold') { min = -60; max = 0; }
                     else if (key === 'ratio') { min = 1; max = 20; }
 
-                    row.innerHTML = `<span class="label" style="width:40px;">${key.toUpperCase()}</span>
-                                     <input type="range" min="${min}" max="${max}" step="${step}" value="${val}" style="flex:1;">`;
-                    row.querySelector('input').oninput = (e) => {
+                    const spanLabel = document.createElement('span');
+                    spanLabel.className = 'label';
+                    spanLabel.style.width = '40px';
+                    spanLabel.textContent = key.toUpperCase();
+
+                    const input = document.createElement('input');
+                    input.type = 'range';
+                    input.min = min;
+                    input.max = max;
+                    input.step = step;
+                    input.value = val;
+                    input.style.flex = '1';
+                    input.oninput = (e) => {
                         unit.params[key] = parseFloat(e.target.value);
                         updateFxParams(unit, null);
                     };
+
+                    row.appendChild(spanLabel);
+                    row.appendChild(input);
                     content.appendChild(row);
                 });
                 panel.appendChild(content);
@@ -1698,7 +1718,7 @@
         function renderDrawers() {
             const container = document.getElementById('drawers-container');
             if (!container) return;
-            container.innerHTML = '';
+            container.textContent = '';
             state.drawers.forEach((drawer, idx) => {
                 const panel = document.createElement('div');
                 panel.className = 'panel drawer-panel';
@@ -1748,22 +1768,24 @@
                 const rateMax = drawer.sync ? 16 : 20;
                 const rateStep = drawer.sync ? 1 : 0.1;
 
-                const labelSpan = document.createElement('span');
-                labelSpan.style.cssText = 'font-size:0.5rem; color:var(--text-dim)';
-                labelSpan.textContent = rateLabel;
+                const spanLabel = document.createElement('span');
+                spanLabel.style.fontSize = '0.5rem';
+                spanLabel.style.color = 'var(--text-dim)';
+                spanLabel.textContent = rateLabel;
 
-                const rangeInput = document.createElement('input');
-                rangeInput.type = 'range';
-                rangeInput.min = rateMin;
-                rangeInput.max = rateMax;
-                rangeInput.step = rateStep;
-                rangeInput.value = drawer.waveRate || 1;
-                rangeInput.style.cssText = 'width:40px; height:3px;';
+                const input = document.createElement('input');
+                input.type = 'range';
+                input.min = rateMin;
+                input.max = rateMax;
+                input.step = rateStep;
+                input.value = drawer.waveRate || 1;
+                input.style.width = '40px';
+                input.style.height = '3px';
 
-                rateWrap.appendChild(labelSpan);
-                rateWrap.appendChild(rangeInput);
+                rateWrap.appendChild(spanLabel);
+                rateWrap.appendChild(input);
 
-                rangeInput.oninput = (e) => {
+                input.oninput = (e) => {
                     drawer.waveRate = parseFloat(e.target.value); 
                     if (drawer.sync && drawer.waveType !== 'none') generateWaveformPoints(drawer);
                 };
@@ -1821,7 +1843,13 @@
                 if (!drawer.minimized) {
                     const dResizer = document.createElement('div');
                     dResizer.style.cssText = 'height:6px; cursor:ns-resize; background:rgba(255,255,255,0.03); border-top:1px solid var(--glass-border); display:flex; align-items:center; justify-content:center;';
-                    dResizer.innerHTML = '<div style="width:20px; height:1px; background:rgba(255,255,255,0.1)"></div>';
+
+                    const resizerHandle = document.createElement('div');
+                    resizerHandle.style.width = '20px';
+                    resizerHandle.style.height = '1px';
+                    resizerHandle.style.background = 'rgba(255,255,255,0.1)';
+                    dResizer.appendChild(resizerHandle);
+
                     dResizer.onmousedown = (e) => {
                         e.preventDefault();
                         const startY = e.clientY;
@@ -1977,7 +2005,7 @@
         }
 
         function renderTracks() {
-            tracksContainer.innerHTML = '';
+            tracksContainer.textContent = '';
             state.tracks.forEach((track, index) => {
                 const template = instrumentTypes[track.typeId];
                 const trackEl = document.createElement('div');
@@ -2056,9 +2084,11 @@
                 volInput.step = '0.05';
                 volInput.value = track.volume;
                 volInput.style.width = '60px';
-                volInput.oninput = (e) => { track.volume = parseFloat(e.target.value); track.gainNode.gain.value = track.volume; };
 
-                volGroup.append(volLabel, volInput);
+                volGroup.appendChild(volLabel);
+                volGroup.appendChild(volInput);
+
+                volInput.oninput = (e) => { track.volume = parseFloat(e.target.value); track.gainNode.gain.value = track.volume; };
 
                 let adsrGroup = null;
                 if (track.adsr) {
@@ -2135,23 +2165,28 @@
                     loopSelect.appendChild(opt);
                 });
                 loopSelect.onchange = (e) => { track.loopMultiplier = parseInt(e.target.value); renderTracks(); };
-                loopGroup.innerHTML = `<span class="label">LOOP</span>`;
+
+                const loopLabel = document.createElement('span');
+                loopLabel.className = 'label';
+                loopLabel.textContent = 'LOOP';
+
+                loopGroup.appendChild(loopLabel);
                 loopGroup.appendChild(loopSelect);
 
                 const subdivSelect = document.createElement('select');
-                subdivSelect.innerHTML = `
-                    <option value="0.25">1/1</option>
-                    <option value="0.5">1/2</option>
-                    <option value="1">1/4</option>
-                    <option value="1.5">1/4T</option>
-                    <option value="0.666">1/4D</option>
-                    <option value="2">1/8</option>
-                    <option value="3">1/8T</option>
-                    <option value="1.333">1/8D</option>
-                    <option value="4">1/16</option>
-                    <option value="6">1/16T</option>
-                    <option value="8">1/32</option>
-                `;
+                const subdivOptions = [
+                    {val: '0.25', text: '1/1'}, {val: '0.5', text: '1/2'}, {val: '1', text: '1/4'},
+                    {val: '1.5', text: '1/4T'}, {val: '0.666', text: '1/4D'}, {val: '2', text: '1/8'},
+                    {val: '3', text: '1/8T'}, {val: '1.333', text: '1/8D'}, {val: '4', text: '1/16'},
+                    {val: '6', text: '1/16T'}, {val: '8', text: '1/32'}
+                ];
+                subdivOptions.forEach(optData => {
+                    const opt = document.createElement('option');
+                    opt.value = optData.val;
+                    opt.textContent = optData.text;
+                    subdivSelect.appendChild(opt);
+                });
+
                 subdivSelect.value = track.subdiv || 4; subdivSelect.onchange = (e) => { track.subdiv = parseFloat(e.target.value); renderTracks(); };
 
                 const randStyleSelect = document.createElement('select'); randStyleSelect.style.cssText = 'width: 55px; font-size: 0.55rem;';
@@ -2238,18 +2273,53 @@
 
                 // Filter Type Selector
                 const filterGroup = document.createElement('div'); filterGroup.style.cssText = 'display:flex; flex-direction:column; align-items:center; gap:2px; margin-left:6px;';
-                filterGroup.innerHTML = `<span class="label" style="font-size:0.45rem; opacity:0.6;">TYPE</span><select style="font-size:0.55rem; width:42px; background:rgba(0,0,0,0.2); color:var(--accent-cyan); border:1px solid var(--glass-border); padding:0 2px;">
-                    <option value="lowpass" ${track.filterNode.type === 'lowpass' ? 'selected' : ''}>LP</option>
-                    <option value="highpass" ${track.filterNode.type === 'highpass' ? 'selected' : ''}>HP</option>
-                    <option value="bandpass" ${track.filterNode.type === 'bandpass' ? 'selected' : ''}>BP</option>
-                </select>`;
+
+                const filterLabel = document.createElement('span');
+                filterLabel.className = 'label';
+                filterLabel.style.cssText = 'font-size:0.45rem; opacity:0.6;';
+                filterLabel.textContent = 'TYPE';
+
+                const filterSelect = document.createElement('select');
+                filterSelect.style.cssText = 'font-size:0.55rem; width:42px; background:rgba(0,0,0,0.2); color:var(--accent-cyan); border:1px solid var(--glass-border); padding:0 2px;';
+
+                const fTypes = [
+                    {val: 'lowpass', text: 'LP'},
+                    {val: 'highpass', text: 'HP'},
+                    {val: 'bandpass', text: 'BP'}
+                ];
+                fTypes.forEach(ft => {
+                    const fOpt = document.createElement('option');
+                    fOpt.value = ft.val;
+                    fOpt.textContent = ft.text;
+                    if (track.filterNode.type === ft.val) fOpt.selected = true;
+                    filterSelect.appendChild(fOpt);
+                });
+
+                filterGroup.appendChild(filterLabel);
+                filterGroup.appendChild(filterSelect);
+
                 if (track.filterNode.type === 'notch') track.filterNode.type = 'lowpass';
-                filterGroup.querySelector('select').onchange = (e) => { track.filterNode.type = e.target.value; };
+                filterSelect.onchange = (e) => { track.filterNode.type = e.target.value; };
 
                 // Panning Slider
                 const panGroup = document.createElement('div'); panGroup.className = 'slider-group'; panGroup.style.marginLeft = '4px';
-                panGroup.innerHTML = `<span class="label">PAN</span><input type="range" min="-1" max="1" step="0.1" value="${track.panNode.pan.value}" style="width:60px; height:3px;">`;
-                panGroup.querySelector('input').oninput = (e) => { track.panNode.pan.setTargetAtTime(parseFloat(e.target.value), audioCtx.currentTime, 0.05); };
+
+                const panLabel = document.createElement('span');
+                panLabel.className = 'label';
+                panLabel.textContent = 'PAN';
+
+                const panInput = document.createElement('input');
+                panInput.type = 'range';
+                panInput.min = '-1';
+                panInput.max = '1';
+                panInput.step = '0.1';
+                panInput.value = track.panNode.pan.value;
+                panInput.style.cssText = 'width:60px; height:3px;';
+
+                panGroup.appendChild(panLabel);
+                panGroup.appendChild(panInput);
+
+                panInput.oninput = (e) => { track.panNode.pan.setTargetAtTime(parseFloat(e.target.value), audioCtx.currentTime, 0.05); };
 
                 const xyGroup = document.createElement('div'); xyGroup.className = 'xy-group';
                 const xyCont = document.createElement('div'); xyCont.className = 'xy-container';
@@ -2263,25 +2333,29 @@
                 
                 // Q Input (Resonance) - Matches Y axis
                 const qWrap = document.createElement('div'); qWrap.style.cssText = 'display:flex; align-items:center; gap:3px; font-size:0.5rem; color:var(--accent-pink); font-weight:bold;';
-                qWrap.innerHTML = `<span>Q</span>`;
+                const spanQ = document.createElement('span'); spanQ.textContent = 'Q';
+                qWrap.appendChild(spanQ);
                 const modY = document.createElement('div'); modY.className = `patch-point mod-in ${track.modLinks.y ? 'active' : ''}`; modY.id = `mod_y_${track.id}`; modY.title = "Modulate Resonance (Q)";
                 qWrap.appendChild(modY);
 
                 // F Input (Frequency) - Matches X axis
                 const fWrap = document.createElement('div'); fWrap.style.cssText = 'display:flex; align-items:center; gap:3px; font-size:0.5rem; color:var(--accent-cyan); font-weight:bold;';
-                fWrap.innerHTML = `<span>F</span>`;
+                const spanF = document.createElement('span'); spanF.textContent = 'F';
+                fWrap.appendChild(spanF);
                 const modX = document.createElement('div'); modX.className = `patch-point mod-in ${track.modLinks.x ? 'active' : ''}`; modX.id = `mod_x_${track.id}`; modX.title = "Modulate Cutoff (Frequency)";
                 fWrap.appendChild(modX);
 
                 // Decay Input
                 const dWrap = document.createElement('div'); dWrap.style.cssText = 'display:flex; align-items:center; gap:3px; font-size:0.5rem; color:var(--accent-yellow); font-weight:bold;';
-                dWrap.innerHTML = `<span>D</span>`;
+                const spanD = document.createElement('span'); spanD.textContent = 'D';
+                dWrap.appendChild(spanD);
                 const modDecay = document.createElement('div'); modDecay.className = `patch-point mod-in ${track.modLinks.decay ? 'active' : ''}`; modDecay.id = `mod_decay_${track.id}`; modDecay.title = "Modulate ADSR Decay (Punchiness)";
                 dWrap.appendChild(modDecay);
 
                 // Attack/Release Input
                 const arWrap = document.createElement('div'); arWrap.style.cssText = 'display:flex; align-items:center; gap:3px; font-size:0.5rem; color:var(--accent-pink); font-weight:bold;';
-                arWrap.innerHTML = `<span>A/R</span>`;
+                const spanAR = document.createElement('span'); spanAR.textContent = 'A/R';
+                arWrap.appendChild(spanAR);
                 const modADSR = document.createElement('div'); modADSR.className = `patch-point mod-in ${track.modLinks.adsr ? 'active' : ''}`; modADSR.id = `mod_adsr_${track.id}`; modADSR.title = "Modulate Attack & Release (Builds/Tension)";
                 arWrap.appendChild(modADSR);
 
@@ -2411,7 +2485,7 @@
                                 const isOn = typeof sd === 'object' ? sd.on : !!sd;
                                 const nl = typeof sd === 'object' ? sd.length : 1.0;
                                 const isSelected = state.selection.notes.some(n => n.trackId === track.id && n.row === rIdx && n.step === s);
-                                step.innerHTML = ''; if (isOn) {
+                                step.textContent = ''; if (isOn) {
                                     const inner = document.createElement('div'); 
                                     inner.className = 'step-inner' + (isSelected ? ' selected' : ''); 
                                     inner.style.width = `calc(${nl * 100}% + ${(nl - 1) * 2}px)`; 
@@ -2543,7 +2617,10 @@
 
             const addBtn = document.createElement('button');
             addBtn.className = 'add-track-btn';
-            addBtn.innerHTML = '<span>+</span> ADD INSTRUMENT TRACK';
+            const spanPlus = document.createElement('span');
+            spanPlus.textContent = '+';
+            addBtn.appendChild(spanPlus);
+            addBtn.appendChild(document.createTextNode(' ADD INSTRUMENT TRACK'));
             addBtn.onclick = () => {
                 state.tracks.push(createTrack('synthwave'));
                 renderTracks();
@@ -2598,7 +2675,7 @@
         function renderFxPanels() {
             const aside = document.getElementById('fx-aside');
             if (!aside) return;
-            aside.innerHTML = '';
+            aside.textContent = '';
             state.fxUnits.forEach((unit, idx) => {
                 const panel = document.createElement('div');
                 panel.className = 'panel fx-panel';
@@ -2617,25 +2694,42 @@
                     { val: 'sidechain', label: 'SIDECHAIN' }
                 ];
 
-                let typeSelector = `<select class="fx-type-select" style="background:var(--surface); color:var(--accent-cyan); font-weight:800; border:1px solid var(--glass-border); padding:3px 6px; border-radius:4px; font-size:0.65rem;">`;
+                const typeSelect = document.createElement('select');
+                typeSelect.className = 'fx-type-select';
+                typeSelect.style.cssText = 'background:var(--surface); color:var(--accent-cyan); font-weight:800; border:1px solid var(--glass-border); padding:3px 6px; border-radius:4px; font-size:0.65rem;';
+
                 typeOptions.forEach(opt => {
-                    typeSelector += `<option value="${opt.val}" ${unit.type === opt.val ? 'selected' : ''}>${opt.label}</option>`;
+                    const optionEl = document.createElement('option');
+                    optionEl.value = opt.val;
+                    optionEl.textContent = opt.label;
+                    if (unit.type === opt.val) optionEl.selected = true;
+                    typeSelect.appendChild(optionEl);
                 });
-                typeSelector += `</select>`;
 
-                panel.innerHTML = `
-                    <div class="panel-header" style="justify-content: flex-start; gap: 8px; border-bottom: 1px solid var(--glass-border);">
-                        <div class="patch-point audio-in" id="audio_in_${unit.id}" title="Wire track output here" style="border-color: #00f2ff;"></div>
-                        ${typeSelector}
-                        <span style="margin-left:auto; color:var(--text-dim); font-size:0.5rem;">#${idx + 1}</span>
-                    </div>
-                    <div class="panel-content fx-controls" style="height: auto; padding: 10px; display:flex; flex-direction:column; gap:8px;">
-                        <!-- Controls injected below -->
-                    </div>
-                `;
+                const panelHeader = document.createElement('div');
+                panelHeader.className = 'panel-header';
+                panelHeader.style.cssText = 'justify-content: flex-start; gap: 8px; border-bottom: 1px solid var(--glass-border);';
 
-                const controlsCont = panel.querySelector('.fx-controls');
-                const typeSelect = panel.querySelector('.fx-type-select');
+                const patchIn = document.createElement('div');
+                patchIn.className = 'patch-point audio-in';
+                patchIn.id = `audio_in_${unit.id}`;
+                patchIn.title = "Wire track output here";
+                patchIn.style.borderColor = '#00f2ff';
+
+                const spanIdx = document.createElement('span');
+                spanIdx.style.cssText = 'margin-left:auto; color:var(--text-dim); font-size:0.5rem;';
+                spanIdx.textContent = `#${idx + 1}`;
+
+                panelHeader.appendChild(patchIn);
+                panelHeader.appendChild(typeSelect);
+                panelHeader.appendChild(spanIdx);
+
+                const controlsCont = document.createElement('div');
+                controlsCont.className = 'panel-content fx-controls';
+                controlsCont.style.cssText = 'height: auto; padding: 10px; display:flex; flex-direction:column; gap:8px;';
+
+                panel.appendChild(panelHeader);
+                panel.appendChild(controlsCont);
 
                 typeSelect.onchange = (e) => {
                     unit.type = e.target.value;
@@ -2647,11 +2741,33 @@
                 const renderSlider = (label, key, min, max, step, suffix = '') => {
                     const row = document.createElement('div');
                     row.className = 'slider-group';
-                    row.innerHTML = `<span class="label" style="width:50px; font-size:0.6rem;">${label}</span>
-                                     <input type="range" min="${min}" max="${max}" step="${step}" value="${unit.params[key]}" style="flex:1;">
-                                     <span class="val-disp label" style="width:40px; text-align:right; font-size:0.6rem; color:var(--accent-cyan);">${unit.params[key]}${suffix}</span>`;
-                    const input = row.querySelector('input');
-                    const disp = row.querySelector('.val-disp');
+
+                    const spanLabel = document.createElement('span');
+                    spanLabel.className = 'label';
+                    spanLabel.style.width = '50px';
+                    spanLabel.style.fontSize = '0.6rem';
+                    spanLabel.textContent = label;
+
+                    const input = document.createElement('input');
+                    input.type = 'range';
+                    input.min = min;
+                    input.max = max;
+                    input.step = step;
+                    input.value = unit.params[key];
+                    input.style.flex = '1';
+
+                    const disp = document.createElement('span');
+                    disp.className = 'val-disp label';
+                    disp.style.width = '40px';
+                    disp.style.textAlign = 'right';
+                    disp.style.fontSize = '0.6rem';
+                    disp.style.color = 'var(--accent-cyan)';
+                    disp.textContent = unit.params[key] + suffix;
+
+                    row.appendChild(spanLabel);
+                    row.appendChild(input);
+                    row.appendChild(disp);
+
                     input.oninput = (e) => {
                         unit.params[key] = parseFloat(e.target.value);
                         disp.textContent = unit.params[key] + suffix;
@@ -2691,10 +2807,19 @@
                 if (syncParams[type]) {
                     const syncRow = document.createElement('div');
                     syncRow.style.marginTop = '4px';
-                    syncRow.innerHTML = `<label style="font-family:var(--font-mono); font-size:0.6rem; color:var(--text-dim); display:flex; align-items:center; gap:8px; cursor:pointer;">
-                                            <input type="checkbox" class="fx-sync-chk" ${unit.params.sync ? 'checked' : ''}> SYNC TO BPM
-                                         </label>`;
-                    const syncChk = syncRow.querySelector('input');
+
+                    const labelSync = document.createElement('label');
+                    labelSync.style.cssText = 'font-family:var(--font-mono); font-size:0.6rem; color:var(--text-dim); display:flex; align-items:center; gap:8px; cursor:pointer;';
+
+                    const syncChk = document.createElement('input');
+                    syncChk.type = 'checkbox';
+                    syncChk.className = 'fx-sync-chk';
+                    syncChk.checked = !!unit.params.sync;
+
+                    labelSync.appendChild(syncChk);
+                    labelSync.appendChild(document.createTextNode(' SYNC TO BPM'));
+                    syncRow.appendChild(labelSync);
+
                     syncChk.onchange = (e) => {
                         unit.params.sync = e.target.checked;
                         renderFxPanels();
@@ -2705,21 +2830,42 @@
                     if (unit.params.sync) {
                         const row = document.createElement('div');
                         row.className = 'slider-group';
-                        row.innerHTML = `<span class="label" style="width:50px; font-size:0.6rem;">DIV</span>
-                                         <select class="fx-sync-select" style="flex:1; font-size:0.65rem; background:var(--surface); color:var(--text-main); border:1px solid var(--glass-border);">
-                                            <option value="4" ${unit.params.syncRate === 4 ? 'selected' : ''}>1/1 (Whole)</option>
-                                            <option value="2" ${unit.params.syncRate === 2 ? 'selected' : ''}>1/2 (Half)</option>
-                                            <option value="3" ${unit.params.syncRate === 3 ? 'selected' : ''}>1/2D (Dotted)</option>
-                                            <option value="1.333" ${unit.params.syncRate === 1.333 ? 'selected' : ''}>1/2T (Triplet)</option>
-                                            <option value="1" ${unit.params.syncRate === 1 ? 'selected' : ''}>1/4</option>
-                                            <option value="1.5" ${unit.params.syncRate === 1.5 ? 'selected' : ''}>1/4D</option>
-                                            <option value="0.666" ${unit.params.syncRate === 0.666 ? 'selected' : ''}>1/4T</option>
-                                            <option value="0.5" ${unit.params.syncRate === 0.5 ? 'selected' : ''}>1/8</option>
-                                            <option value="0.75" ${unit.params.syncRate === 0.75 ? 'selected' : ''}>1/8D</option>
-                                            <option value="0.333" ${unit.params.syncRate === 0.333 ? 'selected' : ''}>1/8T</option>
-                                            <option value="0.25" ${unit.params.syncRate === 0.25 ? 'selected' : ''}>1/16</option>
-                                         </select>`;
-                        const syncS = row.querySelector('select');
+
+                        const spanDiv = document.createElement('span');
+                        spanDiv.className = 'label';
+                        spanDiv.style.width = '50px';
+                        spanDiv.style.fontSize = '0.6rem';
+                        spanDiv.textContent = 'DIV';
+
+                        const syncS = document.createElement('select');
+                        syncS.className = 'fx-sync-select';
+                        syncS.style.cssText = 'flex:1; font-size:0.65rem; background:var(--surface); color:var(--text-main); border:1px solid var(--glass-border);';
+
+                        const rateOptions = [
+                            { val: 4, label: '1/1 (Whole)' },
+                            { val: 2, label: '1/2 (Half)' },
+                            { val: 3, label: '1/2D (Dotted)' },
+                            { val: 1.333, label: '1/2T (Triplet)' },
+                            { val: 1, label: '1/4' },
+                            { val: 1.5, label: '1/4D' },
+                            { val: 0.666, label: '1/4T' },
+                            { val: 0.5, label: '1/8' },
+                            { val: 0.75, label: '1/8D' },
+                            { val: 0.333, label: '1/8T' },
+                            { val: 0.25, label: '1/16' }
+                        ];
+
+                        rateOptions.forEach(opt => {
+                            const optionEl = document.createElement('option');
+                            optionEl.value = opt.val;
+                            optionEl.textContent = opt.label;
+                            if (unit.params.syncRate === opt.val) optionEl.selected = true;
+                            syncS.appendChild(optionEl);
+                        });
+
+                        row.appendChild(spanDiv);
+                        row.appendChild(syncS);
+
                         syncS.onchange = (e) => {
                             unit.params.syncRate = parseFloat(e.target.value);
                             updateFxParams(unit, panel);
@@ -2738,7 +2884,7 @@
         function renderBeatCounter() {
             const container = document.getElementById('beat-counter');
             if (!container) return;
-            container.innerHTML = '';
+            container.textContent = '';
             for (let i = 0; i < state.timeSignature; i++) {
                 const pip = document.createElement('div');
                 pip.className = 'beat-pip';
@@ -2795,7 +2941,7 @@
         function renderScenes() {
             const cont = document.getElementById('scene-container');
             if (!cont) return;
-            cont.innerHTML = '';
+            cont.textContent = '';
             for (let i = 0; i < 8; i++) {
                 const btn = document.createElement('button');
                 btn.textContent = i + 1;
@@ -4366,7 +4512,7 @@
 
         function renderDrawers() {
             const container = document.getElementById('drawers-container');
-            container.innerHTML = '';
+            container.textContent = '';
             state.drawers.forEach((drawer, index) => {
                 const template = instrumentTypes[drawer.connection ? state.tracks.find(t => t.id === drawer.connection)?.typeId : 'synthwave'];
                 const panel = document.createElement('div');
@@ -4444,29 +4590,35 @@
                 const rateMin = drawer.sync ? 0.25 : 0.1;
                 const rateMax = drawer.sync ? 16 : 20;
                 const rateStep = drawer.sync ? 0.25 : 0.1;
-                const labelSpan = document.createElement('span');
-                labelSpan.style.cssText = 'font-size:0.5rem; color:var(--text-dim)';
-                labelSpan.textContent = rateLabel;
 
-                const rangeInput = document.createElement('input');
-                rangeInput.type = 'range';
-                rangeInput.min = rateMin;
-                rangeInput.max = rateMax;
-                rangeInput.step = rateStep;
-                rangeInput.value = drawer.waveRate;
-                rangeInput.style.cssText = 'width:40px; height:3px;';
+                const spanLabel = document.createElement('span');
+                spanLabel.style.fontSize = '0.5rem';
+                spanLabel.style.color = 'var(--text-dim)';
+                spanLabel.textContent = rateLabel;
 
-                const valSpan = document.createElement('span');
-                valSpan.style.cssText = 'font-size:0.5rem; color:var(--accent-yellow); min-width:15px; text-align:left;';
-                valSpan.textContent = drawer.waveRate;
+                const input = document.createElement('input');
+                input.type = 'range';
+                input.min = rateMin;
+                input.max = rateMax;
+                input.step = rateStep;
+                input.value = drawer.waveRate;
+                input.style.width = '40px';
+                input.style.height = '3px';
 
-                rateWrap.appendChild(labelSpan);
-                rateWrap.appendChild(rangeInput);
-                rateWrap.appendChild(valSpan);
+                const spanVal = document.createElement('span');
+                spanVal.style.fontSize = '0.5rem';
+                spanVal.style.color = 'var(--accent-yellow)';
+                spanVal.style.minWidth = '15px';
+                spanVal.style.textAlign = 'left';
+                spanVal.textContent = drawer.waveRate;
 
-                rangeInput.oninput = (e) => {
+                rateWrap.appendChild(spanLabel);
+                rateWrap.appendChild(input);
+                rateWrap.appendChild(spanVal);
+
+                input.oninput = (e) => {
                     drawer.waveRate = parseFloat(e.target.value);
-                    valSpan.textContent = drawer.waveRate;
+                    spanVal.textContent = drawer.waveRate;
                     if (drawer.sync && drawer.waveType !== 'none') {
                         generateWaveformPoints(drawer);
                         const canvas = document.getElementById(`canvas_${drawer.id}`);
@@ -4497,7 +4649,7 @@
                     }
                 };
                 const minBtn = document.createElement('button');
-                minBtn.innerHTML = drawer.minimized ? '&#9634;' : '&#9552;'; // Square or double-dash icon
+                minBtn.textContent = drawer.minimized ? '◻' : '═'; // Square or double-dash equivalent
                 minBtn.title = drawer.minimized ? "Expand" : "Minimize";
                 minBtn.style.cssText = 'padding:0 6px; background:transparent; border:none; color:var(--text-main); cursor:pointer; font-size: 0.8rem; opacity: 0.6;';
                 minBtn.onmouseover = () => minBtn.style.opacity = '1';
@@ -4505,7 +4657,7 @@
                 minBtn.onclick = (e) => { e.stopPropagation(); drawer.minimized = !drawer.minimized; renderDrawers(); };
 
                 const delBtn = document.createElement('button');
-                delBtn.innerHTML = '&times;';
+                delBtn.textContent = '×';
                 delBtn.title = "Delete Modulator";
                 delBtn.style.cssText = 'padding:0 6px; background:transparent; border:none; color:var(--accent-pink); cursor:pointer; font-size: 1rem; opacity: 0.4;';
                 delBtn.onmouseover = () => delBtn.style.opacity = '1';
@@ -4544,7 +4696,14 @@
                 content.appendChild(canvas);
                 const hint = document.createElement('div');
                 hint.style.cssText = 'padding:4px 8px; font-size:0.6rem; color:#444;';
-                hint.innerHTML = `<strong style="color:var(--text-dim)">${drawer.sync ? '1 BAR' : 'FREE'}</strong> | PAINT CURVE TO MODIFY`;
+
+                const hintStrong = document.createElement('strong');
+                hintStrong.style.color = 'var(--text-dim)';
+                hintStrong.textContent = drawer.sync ? '1 BAR' : 'FREE';
+
+                hint.appendChild(hintStrong);
+                hint.appendChild(document.createTextNode(' | PAINT CURVE TO MODIFY'));
+
                 if (!drawer.minimized) {
                     panel.append(header, content, hint);
                 } else {
@@ -4601,7 +4760,10 @@
 
             // Add "Add Drawer" button at the bottom
             const addBtn = document.createElement('button');
-            addBtn.innerHTML = '<span>+</span> ADD MODULATOR';
+            const spanPlusMod = document.createElement('span');
+            spanPlusMod.textContent = '+';
+            addBtn.appendChild(spanPlusMod);
+            addBtn.appendChild(document.createTextNode(' ADD MODULATOR'));
             addBtn.className = 'add-drawer-btn';
             addBtn.style.cssText = 'width: 100%; padding: 12px; margin-top: 8px; background: rgba(0, 242, 255, 0.05); color: var(--accent-cyan); border: 1px dashed rgba(0, 242, 255, 0.3); border-radius: 6px; cursor: pointer; font-size: 0.7rem; font-weight: bold; transition: all 0.2s;';
             addBtn.onmouseover = () => { addBtn.style.background = 'rgba(0, 242, 255, 0.1)'; addBtn.style.borderColor = 'var(--accent-cyan)'; };
