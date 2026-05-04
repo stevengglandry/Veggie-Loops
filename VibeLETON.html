@@ -1326,7 +1326,14 @@
             state.fxUnits.forEach(unit => {
                 const panel = document.createElement('div');
                 panel.className = 'panel fx-panel';
-                panel.innerHTML = `<div class="panel-header"><span>${unit.type.toUpperCase()}</span></div>`;
+
+                const panelHeader = document.createElement('div');
+                panelHeader.className = 'panel-header';
+                const span = document.createElement('span');
+                span.textContent = unit.type.toUpperCase();
+                panelHeader.appendChild(span);
+                panel.appendChild(panelHeader);
+
                 const content = document.createElement('div');
                 content.className = 'panel-content';
                 content.style.height = 'auto';
