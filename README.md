@@ -3,20 +3,18 @@
 
 VibeLETON is a high-performance, vibe-coded, single-.html-file Digital Audio Workstation (DAW) built with the Web Audio API. It combines the tactile workflow of classic hardware grooveboxes/modular synths with generative algorithmic composition tools, allowing for rapid prototyping of rhythm, melody, and complex modulation. First principles are ease of use, flexibility, and fun. 
 
+```text
 [ GENERATIVE ENGINES ]        [ INSTRUMENT TRACKS ]        [ MASTER EFFECTS ]
       (Logic)                       (Audio)                    (Processing)
  ┌────────────────┐          ┌───────────────────┐        ┌──────────────────┐
- │  - Musical     │          │ - Drum Set        │        │  1. Delay        │
- │  - Euclidean   ├────────▶│ - Sub Bass        ├──────▶ │  2. Reverb       │
- │  - Chaotic     │          │ - Lead synth      │        │  3. Distortion   │
- │  - Acid        │          │ - etc.            │        │  4. Chorus       │
+ │  - Musical     │          │  - Drum Set       │        │  1. Delay        │
+ │  - Euclidean   ├─────────▶│  - 80s Lead       ├───────▶│  2. Reverb       │
+ │  - Chaotic     │          │  - Sub Bass       │        │  3. Distortion   │
+ │  - Acid        │          │  - Custom Tracks  │        │  4. Chorus       │
  └────────────────┘          └─────────┬─────────┘        │  5. Compression  │
                                        │                  └────────┬─────────┘
- [ MODULATION ]                        │                           │
- ┌─────────────────┐                   │                           │
- │ - LFO (Sine/Saw)│───────────────────┘                           ▼
- │ - Paintable Env │                                           [ AUDIO OUT ]
- └─────────────────┘
+                                       ▼                           ▼
+                                 [ MODULATION ]              [ AUDIO OUT ]
 
 ## 🚀 Recently Added Features
 
