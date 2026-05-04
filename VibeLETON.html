@@ -839,7 +839,9 @@
             <button id="click-btn">CLICK</button>
             <button id="export-btn" style="color:var(--accent-cyan); border-color:var(--accent-cyan); font-weight:bold;">EXPORT</button>
             <button id="batch-export-btn" style="color:var(--accent-yellow); border-color:var(--accent-yellow); font-weight:bold;">BATCH SCENES</button>
-
+            <button id="save-session-btn" style="color:var(--accent-pink); border-color:var(--accent-pink); font-weight:bold;">SAVE SESSION</button>
+            <button id="load-session-btn" style="color:white; border-color:white; font-weight:bold;">LOAD SESSION</button>
+            <input type="file" id="session-load-input" style="display:none;" accept=".json">
         </div>
         <div class="controls-group" id="beat-counter" style="gap: 8px; padding: 4px 16px;">
             <!-- Beat pips rendered by JS -->
@@ -2584,30 +2586,38 @@
 
         // --- Scene Management ---
         function saveScene(idx) {
-            state.scenes[idx] = state.tracks.map(t => ({
-                typeId: t.typeId,
-                grid: JSON.parse(JSON.stringify(t.grid)),
-                volume: t.volume,
-                subdiv: t.subdiv,
-                octaveOffset: t.octaveOffset,
-                muted: t.muted, solo: t.solo,
-                loopLength: t.loopLength,
-                randStyle: t.randStyle, randDensity: t.randDensity,
-                adsr: t.adsr ? { ...t.adsr } : null,
-                sidechainEnabled: t.sidechainEnabled
-            }));
+            state.scenes[idx] = {
+                tracks: state.tracks.map(t => ({
+                    typeId: t.typeId,
+                    grid: JSON.parse(JSON.stringify(t.grid)),
+                    volume: t.volume,
+                    subdiv: t.subdiv,
+                    octaveOffset: t.octaveOffset,
+                    muted: t.muted, solo: t.solo,
+                    loopLength: t.loopLength,
+                    randStyle: t.randStyle, randDensity: t.randDensity,
+                    adsr: t.adsr ? { ...t.adsr } : null,
+                    sidechainEnabled: t.sidechainEnabled
+                })),
+                fx: state.fxUnits.map(u => ({
+                    type: u.type,
+                    params: JSON.parse(JSON.stringify(u.params))
+                })),
+                bpm: state.bpm,
+                key: state.globalKey,
+                scale: state.globalScale
+            };
             renderScenes();
         }
 
         function loadScene(idx) {
             if (!state.scenes[idx]) return;
-            const data = state.scenes[idx];
+            const scene = state.scenes[idx];
 
-            // Re-map tracks (careful with audio context)
-            data.forEach((trackData, i) => {
+            // 1. Restore Tracks
+            scene.tracks.forEach((trackData, i) => {
                 if (i < state.tracks.length) {
                     const t = state.tracks[i];
-                    // If type changed, we should ideally recreate, but for now let's sync state
                     t.typeId = trackData.typeId;
                     t.grid = trackData.grid;
                     t.volume = trackData.volume;
@@ -2618,12 +2628,42 @@
                     t.randStyle = trackData.randStyle; t.randDensity = trackData.randDensity;
                     if (trackData.adsr) t.adsr = { ...trackData.adsr };
                     t.sidechainEnabled = trackData.sidechainEnabled;
-
-                    // Update audio nodes
                     t.gainNode.gain.value = t.muted ? 0 : t.volume;
                 }
             });
+
+            // 2. Restore FX
+            if (scene.fx) {
+                scene.fx.forEach((fxData, i) => {
+                    if (i < state.fxUnits.length) {
+                        const u = state.fxUnits[i];
+                        if (u.type !== fxData.type) {
+                            u.type = fxData.type;
+                            setupFxNodes(u);
+                        }
+                        u.params = JSON.parse(JSON.stringify(fxData.params));
+                        updateFxParams(u, null);
+                    }
+                });
+            }
+
+            // 3. Restore Global BPM/Key/Scale
+            if (scene.bpm) {
+                state.bpm = scene.bpm;
+                document.getElementById('bpm-input').value = state.bpm;
+            }
+            if (scene.key) {
+                state.globalKey = scene.key;
+                document.getElementById('key-input').value = state.globalKey;
+            }
+            if (scene.scale) {
+                state.globalScale = scene.scale;
+                document.getElementById('scale-input').value = state.globalScale;
+            }
+
+            changeScale();
             renderTracks();
+            renderFxPanels();
             renderScenes();
         }
 
@@ -4511,6 +4551,129 @@
             });
         }
         drawVisuals();
+
+        // --- Session Management (File I/O) ---
+        function saveSession() {
+            const sessionData = {
+                version: "1.0",
+                bpm: state.bpm,
+                timeSignature: state.timeSignature,
+                globalKey: state.globalKey,
+                globalScale: state.globalScale,
+                tracks: state.tracks.map(t => ({
+                    typeId: t.typeId,
+                    volume: t.volume,
+                    muted: t.muted,
+                    solo: t.solo,
+                    subdiv: t.subdiv,
+                    octaveOffset: t.octaveOffset,
+                    loopMultiplier: t.loopMultiplier,
+                    grid: t.grid,
+                    adsr: t.adsr,
+                    sidechainEnabled: t.sidechainEnabled,
+                    xy: t.xy
+                })),
+                fxUnits: state.fxUnits.map(u => ({
+                    type: u.type,
+                    params: u.params
+                })),
+                scenes: state.scenes
+            };
+
+            const blob = new Blob([JSON.stringify(sessionData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Vibleton_Session_${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function loadSession(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const data = JSON.parse(event.target.result);
+
+                    // Restore Global Settings
+                    if (data.bpm) {
+                        state.bpm = data.bpm;
+                        document.getElementById('bpm-input').value = state.bpm;
+                    }
+                    if (data.timeSignature) state.timeSignature = data.timeSignature;
+                    if (data.globalKey) {
+                        state.globalKey = data.globalKey;
+                        document.getElementById('key-input').value = state.globalKey;
+                    }
+                    if (data.globalScale) {
+                        state.globalScale = data.globalScale;
+                        document.getElementById('scale-input').value = state.globalScale;
+                    }
+
+                    // Restore Tracks
+                    if (data.tracks) {
+                        // Clear existing tracks
+                        state.tracks.forEach(t => t.cleanup && t.cleanup());
+                        state.tracks = [];
+
+                        data.tracks.forEach(trackData => {
+                            const newTrack = createTrack(trackData.typeId);
+                            newTrack.volume = trackData.volume;
+                            newTrack.muted = trackData.muted;
+                            newTrack.solo = trackData.solo;
+                            newTrack.subdiv = trackData.subdiv;
+                            newTrack.octaveOffset = trackData.octaveOffset;
+                            newTrack.loopMultiplier = trackData.loopMultiplier || 1;
+                            newTrack.grid = trackData.grid;
+                            if (trackData.adsr) newTrack.adsr = trackData.adsr;
+                            newTrack.sidechainEnabled = trackData.sidechainEnabled;
+                            newTrack.xy = trackData.xy || { x: 0.8, y: 0.2 };
+
+                            newTrack.gainNode.gain.value = newTrack.muted ? 0 : newTrack.volume;
+                            state.tracks.push(newTrack);
+                        });
+                    }
+
+                    // Restore FX
+                    if (data.fxUnits) {
+                        data.fxUnits.forEach((fxData, i) => {
+                            if (i < state.fxUnits.length) {
+                                const u = state.fxUnits[i];
+                                u.type = fxData.type;
+                                setupFxNodes(u);
+                                u.params = fxData.params;
+                                updateFxParams(u, null);
+                            }
+                        });
+                    }
+
+                    // Restore Scenes
+                    if (data.scenes) {
+                        state.scenes = data.scenes;
+                    }
+
+                    // Refresh UI
+                    changeScale();
+                    renderTracks();
+                    renderFxPanels();
+                    renderScenes();
+                    renderBeatCounter();
+
+                    console.log("Session loaded successfully");
+                } catch (err) {
+                    console.error("Error loading session:", err);
+                    alert("Failed to load session file.");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        document.getElementById('save-session-btn').onclick = saveSession;
+        document.getElementById('load-session-btn').onclick = () => document.getElementById('session-load-input').click();
+        document.getElementById('session-load-input').onchange = loadSession;
     </script>
 </body>
 
