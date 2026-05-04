@@ -1548,13 +1548,13 @@
 
             // Delete / Backspace
             if ((e.key === 'Delete' || e.key === 'Backspace') && state.selection.notes.length > 0) {
-                const affectedTracks = new Set();
+                const trackMap = Object.create(null);
+                for (let i = 0; i < state.tracks.length; i++) {
+                    trackMap[state.tracks[i].id] = state.tracks[i];
+                }
                 state.selection.notes.forEach(n => {
-                    const t = state.tracks.find(tr => tr.id === n.trackId);
-                    if (t) {
-                        t.grid[n.row][n.step] = { on: false, length: 1.0 };
-                        affectedTracks.add(n.trackId);
-                    }
+                    const t = trackMap[n.trackId];
+                    if (t) t.grid[n.row][n.step] = { on: false, length: 1.0 };
                 });
                 state.selection.notes = [];
                 affectedTracks.forEach(tId => {
@@ -1572,8 +1572,12 @@
                     if (n.row < minR) minR = n.row;
                     if (n.step < minS) minS = n.step;
                 });
+                const trackMap = Object.create(null);
+                for (let i = 0; i < state.tracks.length; i++) {
+                    trackMap[state.tracks[i].id] = state.tracks[i];
+                }
                 state.selection.clipboard = state.selection.notes.map(n => {
-                    const t = state.tracks.find(tr => tr.id === n.trackId);
+                    const t = trackMap[n.trackId];
                     const data = t ? t.grid[n.row][n.step] : { on: true, length: 1 };
                     return {
                         relRow: n.row - minR,
@@ -2424,19 +2428,87 @@
                                 const isOn = typeof sd === 'object' ? sd.on : !!sd;
                                 const nl = typeof sd === 'object' ? sd.length : 1.0;
                                 const isSelected = state.selection.notes.some(n => n.trackId === track.id && n.row === rIdx && n.step === s);
+                                step.innerHTML = ''; if (isOn) {
+                                    const inner = document.createElement('div'); 
+                                    inner.className = 'step-inner' + (isSelected ? ' selected' : ''); 
+                                    inner.style.width = `calc(${nl * 100}% + ${(nl - 1) * 2}px)`; 
+                                    inner.onmousedown = (e) => {
+                                        if (isPatching) return;
+                                        e.stopPropagation();
 
-                                const inner = step.firstElementChild;
-                                if (isOn) {
-                                    if (!inner) {
-                                        step.appendChild(createStepInner(track, rIdx, s));
-                                    } else {
-                                        inner.className = 'step-inner' + (isSelected ? ' selected' : '');
-                                        inner.style.width = `calc(${nl * 100}% + ${(nl - 1) * 2}px)`;
-                                    }
-                                } else {
-                                    if (inner) {
-                                        step.removeChild(inner);
-                                    }
+                                        const isSelected = state.selection.notes.some(n => n.trackId === track.id && n.row === rIdx && n.step === s);
+
+                                        if (e.shiftKey) {
+                                            // Resize Note Length
+                                            isDraggingPip = false;
+                                            e.preventDefault();
+                                            const rect = inner.getBoundingClientRect();
+                                            const cellW = rect.width / nl;
+                                            let startX = e.clientX, startL = nl;
+                                            const onMove = (me) => {
+                                                let dl = Math.round(((me.clientX - startX) / cellW) * 4) / 4;
+                                                track.grid[rIdx][s] = { on: true, length: Math.max(0.25, startL + dl) };
+                                                renderTracks();
+                                            };
+                                            const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+                                            window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
+                                        } else if (isSelected) {
+                                            // Start Moving Selection
+                                            state.dragSelection.active = true;
+                                            state.dragSelection.startStep = s;
+                                            state.dragSelection.startRow = rIdx;
+                                            state.dragSelection.trackId = track.id;
+                                            
+                                            const trackMap = Object.create(null);
+                                            for (let i = 0; i < state.tracks.length; i++) {
+                                                trackMap[state.tracks[i].id] = state.tracks[i];
+                                            }
+
+                                            // Capture initial states of all selected notes
+                                            const initialNotes = state.selection.notes.map(n => {
+                                                const tr = trackMap[n.trackId];
+                                                return { ...n, data: JSON.parse(JSON.stringify(tr.grid[n.row][n.step])) };
+                                            });
+
+                                            const onMove = (me) => {
+                                                if (!state.hoveredGrid) return;
+                                                const ds = state.hoveredGrid.step - state.dragSelection.startStep;
+                                                const dr = state.hoveredGrid.row - state.dragSelection.startRow;
+                                                if (ds === 0 && dr === 0) return;
+
+                                                // Clear current grid positions of selection
+                                                initialNotes.forEach(n => {
+                                                    const tr = trackMap[n.trackId];
+                                                    tr.grid[n.row][n.step] = { on: false, length: 1.0 };
+                                                });
+
+                                                // Place at new positions
+                                                const newSelection = [];
+                                                initialNotes.forEach(n => {
+                                                    const tr = trackMap[n.trackId];
+                                                    const nr = n.row + dr;
+                                                    const ns = n.step + ds;
+                                                    if (tr.grid[nr] && ns >= 0 && ns < 256) {
+                                                        tr.grid[nr][ns] = n.data;
+                                                        newSelection.push({ trackId: n.trackId, row: nr, step: ns });
+                                                    }
+                                                });
+                                                
+                                                state.selection.notes = newSelection;
+                                                state.dragSelection.startStep += ds;
+                                                state.dragSelection.startRow += dr;
+                                                renderTracks();
+                                            };
+                                            const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+                                            window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
+                                        } else {
+                                            // Simple Delete if not selected and not shift
+                                            dragDrawMode = false;
+                                            track.grid[rIdx][s] = { on: false, length: 1.0 };
+                                            renderTracks();
+                                        }
+                                    };
+                                    step.appendChild(inner);
                                 }
                             };
                             renderCell();
