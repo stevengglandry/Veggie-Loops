@@ -1386,17 +1386,6 @@
             }
         }
 
-        function fillTrackPattern(track) {
-            const subdiv = track.subdiv || 4;
-            const firstMeasureLength = Math.round(state.timeSignature * subdiv);
-            for (let r = 0; r < track.grid.length; r++) {
-                for (let s = firstMeasureLength; s < 256; s++) {
-                    track.grid[r][s] = JSON.parse(JSON.stringify(track.grid[r][s % firstMeasureLength]));
-                }
-            }
-        }
-
-
         function createTrack(typeId) {
             const template = instrumentTypes[typeId];
             const track = {
@@ -1534,6 +1523,7 @@
                 const box = document.getElementById('selection-box');
                 if (box) {
                     const rect = box.getBoundingClientRect();
+                    const affectedTracks = new Set();
                     // Find all .step-inner elements inside this rect
                     document.querySelectorAll('.step-inner').forEach(inner => {
                         const iRect = inner.getBoundingClientRect();
@@ -1546,10 +1536,14 @@
                             const rowIdx = Array.from(rowEl.parentElement.children).indexOf(rowEl);
                             const stepIdx = parseInt(stepEl.dataset.step);
                             state.selection.notes.push({ trackId, row: rowIdx, step: stepIdx });
+                            affectedTracks.add(trackId);
                         }
                     });
                     box.style.display = 'none';
-                    renderTracks();
+                    affectedTracks.forEach(tId => {
+                        const t = state.tracks.find(tr => tr.id === tId);
+                        if (t) updateTrackGrid(t);
+                    });
                 }
                 state.selection.active = false;
             }
@@ -1563,12 +1557,16 @@
 
             // Delete / Backspace
             if ((e.key === 'Delete' || e.key === 'Backspace') && state.selection.notes.length > 0) {
+                const trackMap = new Map(state.tracks.map(t => [t.id, t]));
                 state.selection.notes.forEach(n => {
-                    const t = state.tracks.find(tr => tr.id === n.trackId);
+                    const t = trackMap.get(n.trackId);
                     if (t) t.grid[n.row][n.step] = { on: false, length: 1.0 };
                 });
                 state.selection.notes = [];
-                renderTracks();
+                affectedTracks.forEach(tId => {
+                    const t = state.tracks.find(tr => tr.id === tId);
+                    if (t) updateTrackGrid(t);
+                });
                 return;
             }
 
@@ -1580,8 +1578,9 @@
                     if (n.row < minR) minR = n.row;
                     if (n.step < minS) minS = n.step;
                 });
+                const trackMap = new Map(state.tracks.map(t => [t.id, t]));
                 state.selection.clipboard = state.selection.notes.map(n => {
-                    const t = state.tracks.find(tr => tr.id === n.trackId);
+                    const t = trackMap.get(n.trackId);
                     const data = t ? t.grid[n.row][n.step] : { on: true, length: 1 };
                     return {
                         relRow: n.row - minR,
@@ -1605,7 +1604,7 @@
                             track.grid[targetR][targetS] = { on: clip.on, length: clip.nl };
                         }
                     });
-                    renderTracks();
+                    updateTrackGrid(track);
                 }
                 return;
             }
@@ -1636,7 +1635,7 @@
                     changed = true;
                 }
                 
-                if (changed) renderTracks();
+                if (changed) updateTrackGrid(track);
             }
         });
 
@@ -1873,6 +1872,138 @@
         }
 
 
+        function createStepInner(track, rIdx, s) {
+            const inner = document.createElement('div');
+
+            const updateVisuals = () => {
+                const sd = track.grid[rIdx][s];
+                const isOn = typeof sd === 'object' ? sd.on : !!sd;
+                if (!isOn) return;
+                const nl = typeof sd === 'object' ? sd.length : 1.0;
+                const isSelected = state.selection.notes.some(n => n.trackId === track.id && n.row === rIdx && n.step === s);
+                inner.className = 'step-inner' + (isSelected ? ' selected' : '');
+                inner.style.width = `calc(${nl * 100}% + ${(nl - 1) * 2}px)`;
+            };
+            updateVisuals();
+
+            inner.onmousedown = (e) => {
+                if (isPatching) return;
+                e.stopPropagation();
+
+                const isCurrentSelected = state.selection.notes.some(n => n.trackId === track.id && n.row === rIdx && n.step === s);
+
+                if (e.shiftKey) {
+                    // Resize Note Length
+                    isDraggingPip = false;
+                    e.preventDefault();
+                    const rect = inner.getBoundingClientRect();
+                    const currentNl = typeof track.grid[rIdx][s] === 'object' ? track.grid[rIdx][s].length : 1.0;
+                    const cellW = rect.width / currentNl;
+                    let startX = e.clientX, startL = currentNl;
+                    const onMove = (me) => {
+                        let dl = Math.round(((me.clientX - startX) / cellW) * 4) / 4;
+                        track.grid[rIdx][s] = { on: true, length: Math.max(0.25, startL + dl) };
+                        updateTrackGrid(track);
+                    };
+                    const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+                    window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
+                } else if (isCurrentSelected) {
+                    // Start Moving Selection
+                    state.dragSelection.active = true;
+                    state.dragSelection.startStep = s;
+                    state.dragSelection.startRow = rIdx;
+                    state.dragSelection.trackId = track.id;
+
+                    // Capture initial states of all selected notes
+                    const initialNotes = state.selection.notes.map(n => {
+                        const tr = state.tracks.find(t => t.id === n.trackId);
+                        return { ...n, data: JSON.parse(JSON.stringify(tr.grid[n.row][n.step])) };
+                    });
+
+                    const onMove = (me) => {
+                        if (!state.hoveredGrid) return;
+                        const ds = state.hoveredGrid.step - state.dragSelection.startStep;
+                        const dr = state.hoveredGrid.row - state.dragSelection.startRow;
+                        if (ds === 0 && dr === 0) return;
+
+                        // Clear current grid positions of selection
+                        initialNotes.forEach(n => {
+                            const tr = state.tracks.find(t => t.id === n.trackId);
+                            if (tr && tr.grid[n.row] && tr.grid[n.row][n.step]) {
+                                tr.grid[n.row][n.step] = { on: false, length: 1.0 };
+                            }
+                        });
+
+                        // Place at new positions
+                        const newSelection = [];
+                        initialNotes.forEach(n => {
+                            const tr = state.tracks.find(t => t.id === n.trackId);
+                            const nr = n.row + dr;
+                            const ns = n.step + ds;
+                            if (tr && tr.grid[nr] && ns >= 0 && ns < 256) {
+                                tr.grid[nr][ns] = n.data;
+                                newSelection.push({ trackId: n.trackId, row: nr, step: ns });
+                            }
+                        });
+
+                        state.selection.notes = newSelection;
+                        state.dragSelection.startStep += ds;
+                        state.dragSelection.startRow += dr;
+
+                        // Update all affected tracks
+                        const affectedTracks = new Set(initialNotes.map(n => n.trackId).concat(newSelection.map(n => n.trackId)));
+                        affectedTracks.forEach(tId => {
+                            const tr = state.tracks.find(t => t.id === tId);
+                            if (tr) updateTrackGrid(tr);
+                        });
+                    };
+                    const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+                    window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
+                } else {
+                    // Simple Delete if not selected and not shift
+                    dragDrawMode = false;
+                    track.grid[rIdx][s] = { on: false, length: 1.0 };
+                    updateTrackGrid(track);
+                }
+            };
+            return inner;
+        }
+
+        function updateAllTrackGrids() {
+            state.tracks.forEach(track => updateTrackGrid(track));
+        }
+
+        function updateTrackGrid(track) {
+            const trackEl = document.getElementById(`track_${track.id}`);
+            if (!trackEl || track.minimized) return;
+            const rows = trackEl.querySelectorAll('.grid-row');
+            rows.forEach((rowEl, rIdx) => {
+                const steps = rowEl.querySelectorAll('.step');
+                steps.forEach(stepEl => {
+                    const s = parseInt(stepEl.dataset.step);
+                    if (isNaN(s)) return;
+                    const sd = track.grid[rIdx][s];
+                    const isOn = typeof sd === 'object' ? sd.on : !!sd;
+                    const nl = typeof sd === 'object' ? sd.length : 1.0;
+                    const isSelected = state.selection.notes.some(n => n.trackId === track.id && n.row === rIdx && n.step === s);
+
+                    const inner = stepEl.firstElementChild;
+                    if (isOn) {
+                        if (!inner) {
+                            stepEl.appendChild(createStepInner(track, rIdx, s));
+                        } else {
+                            inner.className = 'step-inner' + (isSelected ? ' selected' : '');
+                            inner.style.width = `calc(${nl * 100}% + ${(nl - 1) * 2}px)`;
+                        }
+                    } else {
+                        if (inner) {
+                            stepEl.removeChild(inner);
+                        }
+                    }
+                });
+            });
+        }
+
         function renderTracks() {
             tracksContainer.textContent = '';
             state.tracks.forEach((track, index) => {
@@ -2104,9 +2235,9 @@
 
                 const fillBtn = document.createElement('button');
                 fillBtn.textContent = '♾️'; fillBtn.title = "Fill the Roll: Repeat 1st measure pattern across the loop";
-                fillBtn.onclick = () => { fillTrackPattern(track); renderTracks(); };
+                fillBtn.onclick = () => { fillTrackPattern(track); updateTrackGrid(track); };
 
-                const clearBtn = document.createElement('button'); clearBtn.textContent = '✕'; clearBtn.style.color = 'var(--accent-pink)'; clearBtn.onclick = () => { track.grid.forEach(row => row.fill(false)); renderTracks(); };
+                const clearBtn = document.createElement('button'); clearBtn.textContent = '✕'; clearBtn.style.color = 'var(--accent-pink)'; clearBtn.onclick = () => { track.grid.forEach(row => row.fill(false)); updateTrackGrid(track); };
 
                 const randGroup = document.createElement('div');
                 randGroup.style.cssText = 'display:flex; flex-direction:column; gap:4px; padding:6px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:6px; margin-left:auto; min-width:200px;';
@@ -2350,7 +2481,9 @@
                             const step = document.createElement('div'); step.className = `step ${isLight ? 'light-beat' : ''}`;
                             step.dataset.step = s;
                             const renderCell = () => {
-                                const sd = track.grid[rIdx][s]; const isOn = typeof sd === 'object' ? sd.on : !!sd; const nl = typeof sd === 'object' ? sd.length : 1.0;
+                                const sd = track.grid[rIdx][s];
+                                const isOn = typeof sd === 'object' ? sd.on : !!sd;
+                                const nl = typeof sd === 'object' ? sd.length : 1.0;
                                 const isSelected = state.selection.notes.some(n => n.trackId === track.id && n.row === rIdx && n.step === s);
                                 step.textContent = ''; if (isOn) {
                                     const inner = document.createElement('div'); 
@@ -2383,9 +2516,14 @@
                                             state.dragSelection.startRow = rIdx;
                                             state.dragSelection.trackId = track.id;
                                             
+                                            const trackMap = Object.create(null);
+                                            for (let i = 0; i < state.tracks.length; i++) {
+                                                trackMap[state.tracks[i].id] = state.tracks[i];
+                                            }
+
                                             // Capture initial states of all selected notes
                                             const initialNotes = state.selection.notes.map(n => {
-                                                const tr = state.tracks.find(t => t.id === n.trackId);
+                                                const tr = trackMap[n.trackId];
                                                 return { ...n, data: JSON.parse(JSON.stringify(tr.grid[n.row][n.step])) };
                                             });
 
@@ -2397,14 +2535,14 @@
 
                                                 // Clear current grid positions of selection
                                                 initialNotes.forEach(n => {
-                                                    const tr = state.tracks.find(t => t.id === n.trackId);
+                                                    const tr = trackMap[n.trackId];
                                                     tr.grid[n.row][n.step] = { on: false, length: 1.0 };
                                                 });
 
                                                 // Place at new positions
                                                 const newSelection = [];
                                                 initialNotes.forEach(n => {
-                                                    const tr = state.tracks.find(t => t.id === n.trackId);
+                                                    const tr = trackMap[n.trackId];
                                                     const nr = n.row + dr;
                                                     const ns = n.step + ds;
                                                     if (tr.grid[nr] && ns >= 0 && ns < 256) {
@@ -2431,12 +2569,12 @@
                                 }
                             };
                             renderCell();
-                            step.onmousedown = (e) => { if (isPatching || e.shiftKey) return; dragDrawMode = !(typeof track.grid[rIdx][s] === 'object' ? track.grid[rIdx][s].on : !!track.grid[rIdx][s]); track.grid[rIdx][s] = { on: dragDrawMode, length: 1.0 }; renderCell(); };
+                            step.onmousedown = (e) => { if (isPatching || e.shiftKey) return; dragDrawMode = !(typeof track.grid[rIdx][s] === 'object' ? track.grid[rIdx][s].on : !!track.grid[rIdx][s]); track.grid[rIdx][s] = { on: dragDrawMode, length: 1.0 }; updateTrackGrid(track); };
                             step.onmouseenter = () => { 
                                 state.hoveredGrid = { trackId: track.id, row: rIdx, step: s };
                                 if (!isPatching && isDraggingPip && !window.event?.shiftKey) { 
                                     track.grid[rIdx][s] = { on: dragDrawMode, length: 1.0 }; 
-                                    renderCell(); 
+                                    updateTrackGrid(track);
                                 } 
                             };
                             step.onmouseleave = () => {
@@ -2984,7 +3122,7 @@
                     }
                 }
             }
-            renderTracks();
+            updateTrackGrid(track);
         }
 
         // --- Cable Patching System ---
@@ -4659,13 +4797,6 @@
         }
 
         window.addEventListener('mouseup', () => { activeDrawingDrawerId = null; });
-
-        function resizeCanvas() {
-            oscCanvas.width = oscCanvas.offsetWidth; oscCanvas.height = oscCanvas.offsetHeight;
-            specCanvas.width = specCanvas.offsetWidth; specCanvas.height = specCanvas.offsetHeight;
-            renderDrawers();
-        }
-        window.onload = () => { resizeCanvas(); renderTracks(); renderDrawers(); renderBeatCounter(); renderFxPanels(); };
 
         function drawVisuals() {
             requestAnimationFrame(drawVisuals);
