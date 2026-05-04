@@ -1763,20 +1763,6 @@
             }
         }
 
-        function generateWaveformPoints(drawer) {
-            drawer.points = [];
-            const steps = 64;
-            for (let i = 0; i <= steps; i++) {
-                const x = i / steps;
-                let y = 0.5;
-                if (drawer.waveType === 'sine') y = 0.5 + 0.5 * Math.sin(x * Math.PI * 2);
-                else if (drawer.waveType === 'saw') y = x;
-                else if (drawer.waveType === 'tri') y = x < 0.5 ? x * 2 : 2 - x * 2;
-                else if (drawer.waveType === 'rect') y = x < 0.5 ? 0 : 1;
-                drawer.points.push({ x, y: 1 - y });
-            }
-        }
-
         function drawDrawer(canvas, drawer) {
             const ctx = canvas.getContext('2d');
             const w = canvas.width, h = canvas.height;
