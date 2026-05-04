@@ -8,13 +8,16 @@ VibeLETON is a high-performance, vibe-coded, single-.html-file Digital Audio Wor
       (Logic)                       (Audio)                    (Processing)
  ┌────────────────┐          ┌───────────────────┐        ┌──────────────────┐
  │  - Musical     │          │  - Drum Set       │        │  1. Delay        │
- │  - Euclidean   ├─────────▶│  - 80s Lead       ├───────▶│  2. Reverb       │
+ │  - Euclidean   ├─────────▶│  - 80s Lead       ├───────▶│  2. Reverb      │
  │  - Chaotic     │          │  - Sub Bass       │        │  3. Distortion   │
  │  - Acid        │          │  - Custom Tracks  │        │  4. Chorus       │
  └────────────────┘          └─────────┬─────────┘        │  5. Compression  │
                                        │                  └────────┬─────────┘
-                                       ▼                           ▼
-                                 [ MODULATION ]              [ AUDIO OUT ]
+ [ MODULATION ]                        │                           │
+ ┌─────────────────┐                   │                           │
+ │ - LFO (Sine/Saw)│───────────────────┘                           ▼
+ │ - Paintable Env │                                           [ AUDIO OUT ]
+ └─────────────────┘
 
 ## 🚀 Recently Added Features
 
