@@ -839,7 +839,9 @@
             <button id="click-btn">CLICK</button>
             <button id="export-btn" style="color:var(--accent-cyan); border-color:var(--accent-cyan); font-weight:bold;">EXPORT</button>
             <button id="batch-export-btn" style="color:var(--accent-yellow); border-color:var(--accent-yellow); font-weight:bold;">BATCH SCENES</button>
-
+            <button id="save-session-btn" style="color:var(--accent-pink); border-color:var(--accent-pink); font-weight:bold;">SAVE SESSION</button>
+            <button id="load-session-btn" style="color:white; border-color:white; font-weight:bold;">LOAD SESSION</button>
+            <input type="file" id="session-load-input" style="display:none;" accept=".json">
         </div>
         <div class="controls-group" id="beat-counter" style="gap: 8px; padding: 4px 16px;">
             <!-- Beat pips rendered by JS -->
@@ -962,6 +964,37 @@
     <footer class="footer"></footer>
 
     <script>
+        // --- Cache for Connection Elements ---
+        window.cableElementCache = {
+            out: new Map(),
+            in: new Map(),
+            mod_x: new Map(),
+            mod_y: new Map(),
+            mod_decay: new Map(),
+            mod_adsr: new Map(),
+            audio_out: new Map(),
+            audio_in: new Map()
+        };
+
+        function updateCableElementCache() {
+            window.cableElementCache.out.clear();
+            window.cableElementCache.in.clear();
+            window.cableElementCache.mod_x.clear();
+            window.cableElementCache.mod_y.clear();
+            window.cableElementCache.mod_decay.clear();
+            window.cableElementCache.mod_adsr.clear();
+            window.cableElementCache.audio_out.clear();
+            window.cableElementCache.audio_in.clear();
+
+            document.querySelectorAll('[id^="out_"]').forEach(el => window.cableElementCache.out.set(el.id, el));
+            document.querySelectorAll('[id^="in_"]').forEach(el => window.cableElementCache.in.set(el.id, el));
+            document.querySelectorAll('[id^="mod_x_"]').forEach(el => window.cableElementCache.mod_x.set(el.id, el));
+            document.querySelectorAll('[id^="mod_y_"]').forEach(el => window.cableElementCache.mod_y.set(el.id, el));
+            document.querySelectorAll('[id^="mod_decay_"]').forEach(el => window.cableElementCache.mod_decay.set(el.id, el));
+            document.querySelectorAll('[id^="mod_adsr_"]').forEach(el => window.cableElementCache.mod_adsr.set(el.id, el));
+            document.querySelectorAll('[id^="audio_out_"]').forEach(el => window.cableElementCache.audio_out.set(el.id, el));
+            document.querySelectorAll('[id^="audio_in_"]').forEach(el => window.cableElementCache.audio_in.set(el.id, el));
+        }
         // --- State & Config ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
@@ -1027,6 +1060,11 @@
             },
             hoveredGrid: null, // { trackId, row, step }
             lookup: { tracks: new Map(), fxUnits: new Map(), drawers: new Map() }
+            lookup: {
+                tracks: new Map(),
+                fxUnits: new Map(),
+                drawers: new Map()
+            }
         };
 
         function refreshLookupMap() {
@@ -1036,6 +1074,16 @@
             state.tracks.forEach(t => state.lookup.tracks.set(t.id, t));
             state.fxUnits.forEach(u => state.lookup.fxUnits.set(u.id, u));
             state.drawers.forEach(d => state.lookup.drawers.set(d.id, d));
+
+            for (let i = 0; i < state.tracks.length; i++) {
+                state.lookup.tracks.set(state.tracks[i].id, state.tracks[i]);
+            }
+            for (let i = 0; i < state.fxUnits.length; i++) {
+                state.lookup.fxUnits.set(state.fxUnits[i].id, state.fxUnits[i]);
+            }
+            for (let i = 0; i < state.drawers.length; i++) {
+                state.lookup.drawers.set(state.drawers[i].id, state.drawers[i]);
+            }
         }
 
         // --- Audio Routing Setup ---
@@ -1213,6 +1261,7 @@
 
         state.fxUnits = [createFxUnit('delay'), createFxUnit('reverb'), createFxUnit('distortion'), createFxUnit('chorus'), createFxUnit('compressor')];
         refreshLookupMap();
+        state.fxUnits = [createFxUnit('delay'), createFxUnit('reverb'), createFxUnit('distortion'), createFxUnit('chorus'), createFxUnit('compressor')]; refreshLookupMap();
 
         // --- Track Data Models ---
         const scalesDef = {
@@ -1290,14 +1339,18 @@
         }
         updateInstrumentRows();
 
+        let cachedBeatCounterContainer = null;
+        let cachedBeatPips = [];
+
         function renderBeatCounter() {
             const container = document.getElementById('beat-counter');
             if (!container) return;
-            container.innerHTML = '';
+            container.textContent = '';
             for (let i = 0; i < state.timeSignature; i++) {
                 const pip = document.createElement('div');
                 pip.className = 'beat-pip' + (i === Math.floor(state.currentStep / state.stepsPerBeat) % state.timeSignature ? ' active' : '');
-                container.appendChild(pip);
+                cachedBeatCounterContainer.appendChild(pip);
+                cachedBeatPips.push(pip);
             }
         }
 
@@ -1334,11 +1387,18 @@
         function renderFxPanels() {
             const container = document.getElementById('fx-aside');
             if (!container) return;
-            container.innerHTML = '';
+            container.textContent = '';
             state.fxUnits.forEach(unit => {
                 const panel = document.createElement('div');
                 panel.className = 'panel fx-panel';
-                panel.innerHTML = `<div class="panel-header"><span>${unit.type.toUpperCase()}</span></div>`;
+
+                const panelHeader = document.createElement('div');
+                panelHeader.className = 'panel-header';
+                const spanHeader = document.createElement('span');
+                spanHeader.textContent = unit.type.toUpperCase();
+                panelHeader.appendChild(spanHeader);
+                panel.appendChild(panelHeader);
+
                 const content = document.createElement('div');
                 content.className = 'panel-content';
                 content.style.height = 'auto';
@@ -1357,38 +1417,46 @@
                     else if (key === 'threshold') { min = -60; max = 0; }
                     else if (key === 'ratio') { min = 1; max = 20; }
 
-                    row.innerHTML = `<span class="label" style="width:40px;">${key.toUpperCase()}</span>
-                                     <input type="range" min="${min}" max="${max}" step="${step}" value="${val}" style="flex:1;">`;
-                    row.querySelector('input').oninput = (e) => {
+                    const spanLabel = document.createElement('span');
+                    spanLabel.className = 'label';
+                    spanLabel.style.width = '40px';
+                    spanLabel.textContent = key.toUpperCase();
+
+                    const input = document.createElement('input');
+                    input.type = 'range';
+                    input.min = min;
+                    input.max = max;
+                    input.step = step;
+                    input.value = val;
+                    input.style.flex = '1';
+                    input.oninput = (e) => {
                         unit.params[key] = parseFloat(e.target.value);
                         updateFxParams(unit, null);
                     };
+
+                    row.appendChild(spanLabel);
+                    row.appendChild(input);
                     content.appendChild(row);
                 });
                 panel.appendChild(content);
                 container.appendChild(panel);
             });
+
+            updateCableElementCache();
         }
 
         function autoSpawnTrackIfNeeded() {
-            const allUsed = state.tracks.every(t => t.grid.some(row => row.some(s => typeof s === 'object' ? s.on : !!s)));
+            const synthTracks = state.tracks.filter(t => t.typeId !== 'drumSet' && t.typeId !== 'auxPerc');
+            if (synthTracks.length === 0) return;
+
+            const allUsed = synthTracks.every(t => t.grid.some(row => row.some(s => typeof s === 'object' ? s.on : !!s)));
             if (allUsed && state.tracks.length < 12) {
                 state.tracks.push(createTrack('synthwave'));
                 refreshLookupMap();
+                state.tracks.push(createTrack('synthwave')); refreshLookupMap();
                 renderTracks();
             }
         }
-
-        function fillTrackPattern(track) {
-            const subdiv = track.subdiv || 4;
-            const firstMeasureLength = Math.round(state.timeSignature * subdiv);
-            for (let r = 0; r < track.grid.length; r++) {
-                for (let s = firstMeasureLength; s < 256; s++) {
-                    track.grid[r][s] = JSON.parse(JSON.stringify(track.grid[r][s % firstMeasureLength]));
-                }
-            }
-        }
-
 
         function createTrack(typeId) {
             const template = instrumentTypes[typeId];
@@ -1461,6 +1529,10 @@
         state.tracks.push(createTrack('synthwave'));
         state.tracks.push(createTrack('bass'));
         refreshLookupMap();
+        state.tracks.push(createTrack('drumSet')); refreshLookupMap();
+        state.tracks.push(createTrack('auxPerc')); refreshLookupMap();
+        state.tracks.push(createTrack('synthwave')); refreshLookupMap();
+        state.tracks.push(createTrack('bass')); refreshLookupMap();
 
         // --- UI Rendering ---
         const tracksContainer = document.getElementById('tracks-container');
@@ -1529,6 +1601,7 @@
                 const box = document.getElementById('selection-box');
                 if (box) {
                     const rect = box.getBoundingClientRect();
+                    const affectedTracks = new Set();
                     // Find all .step-inner elements inside this rect
                     document.querySelectorAll('.step-inner').forEach(inner => {
                         const iRect = inner.getBoundingClientRect();
@@ -1541,10 +1614,14 @@
                             const rowIdx = Array.from(rowEl.parentElement.children).indexOf(rowEl);
                             const stepIdx = parseInt(stepEl.dataset.step);
                             state.selection.notes.push({ trackId, row: rowIdx, step: stepIdx });
+                            affectedTracks.add(trackId);
                         }
                     });
                     box.style.display = 'none';
-                    renderTracks();
+                    affectedTracks.forEach(tId => {
+                        const t = state.tracks.find(tr => tr.id === tId);
+                        if (t) updateTrackGrid(t);
+                    });
                 }
                 state.selection.active = false;
             }
@@ -1558,12 +1635,17 @@
 
             // Delete / Backspace
             if ((e.key === 'Delete' || e.key === 'Backspace') && state.selection.notes.length > 0) {
+                const trackMap = new Map(state.tracks.map(t => [t.id, t]));
                 state.selection.notes.forEach(n => {
                     const t = state.lookup.tracks.get(n.trackId);
+                    const t = trackMap.get(n.trackId);
                     if (t) t.grid[n.row][n.step] = { on: false, length: 1.0 };
                 });
                 state.selection.notes = [];
-                renderTracks();
+                affectedTracks.forEach(tId => {
+                    const t = state.tracks.find(tr => tr.id === tId);
+                    if (t) updateTrackGrid(t);
+                });
                 return;
             }
 
@@ -1575,8 +1657,10 @@
                     if (n.row < minR) minR = n.row;
                     if (n.step < minS) minS = n.step;
                 });
+                const trackMap = new Map(state.tracks.map(t => [t.id, t]));
                 state.selection.clipboard = state.selection.notes.map(n => {
                     const t = state.lookup.tracks.get(n.trackId);
+                    const t = trackMap.get(n.trackId);
                     const data = t ? t.grid[n.row][n.step] : { on: true, length: 1 };
                     return {
                         relRow: n.row - minR,
@@ -1600,7 +1684,7 @@
                             track.grid[targetR][targetS] = { on: clip.on, length: clip.nl };
                         }
                     });
-                    renderTracks();
+                    updateTrackGrid(track);
                 }
                 return;
             }
@@ -1631,7 +1715,7 @@
                     changed = true;
                 }
                 
-                if (changed) renderTracks();
+                if (changed) updateTrackGrid(track);
             }
         });
 
@@ -1643,6 +1727,7 @@
             if (allUsed) {
                 state.tracks.push(createTrack('synthwave'));
                 refreshLookupMap();
+                state.tracks.push(createTrack('synthwave')); refreshLookupMap();
                 renderTracks();
             }
         }
@@ -1656,8 +1741,12 @@
             state.tracks.forEach(t => {
                 if (t.sidechainEnabled && t.sidechainNode) {
                     const g = t.sidechainNode.gain;
-                    g.cancelScheduledValues(time);
-                    g.setValueAtTime(g.value, time);
+                    if (typeof g.cancelAndHoldAtTime === 'function') {
+                        g.cancelAndHoldAtTime(time);
+                    } else {
+                        g.cancelScheduledValues(time);
+                        try { g.setValueAtTime(g.value, time); } catch(e) {}
+                    }
                     g.exponentialRampToValueAtTime(0.2, time + 0.01);
                     g.exponentialRampToValueAtTime(1.0, time + 0.2);
                 }
@@ -1669,6 +1758,7 @@
             if (allUsed && state.drawers.length < 8) {
                 state.drawers.push(createDrawer());
                 refreshLookupMap();
+                state.drawers.push(createDrawer()); refreshLookupMap();
                 renderDrawers();
             }
         }
@@ -1716,7 +1806,7 @@
         function renderDrawers() {
             const container = document.getElementById('drawers-container');
             if (!container) return;
-            container.innerHTML = '';
+            container.textContent = '';
             state.drawers.forEach((drawer, idx) => {
                 const panel = document.createElement('div');
                 panel.className = 'panel drawer-panel';
@@ -1765,9 +1855,25 @@
                 const rateMin = drawer.sync ? 1 : 0.1;
                 const rateMax = drawer.sync ? 16 : 20;
                 const rateStep = drawer.sync ? 1 : 0.1;
-                rateWrap.innerHTML = `<span style="font-size:0.5rem; color:var(--text-dim)">${rateLabel}</span>
-                                      <input type="range" min="${rateMin}" max="${rateMax}" step="${rateStep}" value="${drawer.waveRate || 1}" style="width:40px; height:3px;">`;
-                rateWrap.querySelector('input').oninput = (e) => { 
+
+                const spanLabel = document.createElement('span');
+                spanLabel.style.fontSize = '0.5rem';
+                spanLabel.style.color = 'var(--text-dim)';
+                spanLabel.textContent = rateLabel;
+
+                const input = document.createElement('input');
+                input.type = 'range';
+                input.min = rateMin;
+                input.max = rateMax;
+                input.step = rateStep;
+                input.value = drawer.waveRate || 1;
+                input.style.width = '40px';
+                input.style.height = '3px';
+
+                rateWrap.appendChild(spanLabel);
+                rateWrap.appendChild(input);
+
+                input.oninput = (e) => {
                     drawer.waveRate = parseFloat(e.target.value); 
                     if (drawer.sync && drawer.waveType !== 'none') generateWaveformPoints(drawer);
                 };
@@ -1825,7 +1931,13 @@
                 if (!drawer.minimized) {
                     const dResizer = document.createElement('div');
                     dResizer.style.cssText = 'height:6px; cursor:ns-resize; background:rgba(255,255,255,0.03); border-top:1px solid var(--glass-border); display:flex; align-items:center; justify-content:center;';
-                    dResizer.innerHTML = '<div style="width:20px; height:1px; background:rgba(255,255,255,0.1)"></div>';
+
+                    const resizerHandle = document.createElement('div');
+                    resizerHandle.style.width = '20px';
+                    resizerHandle.style.height = '1px';
+                    resizerHandle.style.background = 'rgba(255,255,255,0.1)';
+                    dResizer.appendChild(resizerHandle);
+
                     dResizer.onmousedown = (e) => {
                         e.preventDefault();
                         const startY = e.clientY;
@@ -1845,11 +1957,145 @@
 
                 container.appendChild(panel);
             });
+
+            updateCableElementCache();
         }
 
 
+        function createStepInner(track, rIdx, s) {
+            const inner = document.createElement('div');
+
+            const updateVisuals = () => {
+                const sd = track.grid[rIdx][s];
+                const isOn = typeof sd === 'object' ? sd.on : !!sd;
+                if (!isOn) return;
+                const nl = typeof sd === 'object' ? sd.length : 1.0;
+                const isSelected = state.selection.notes.some(n => n.trackId === track.id && n.row === rIdx && n.step === s);
+                inner.className = 'step-inner' + (isSelected ? ' selected' : '');
+                inner.style.width = `calc(${nl * 100}% + ${(nl - 1) * 2}px)`;
+            };
+            updateVisuals();
+
+            inner.onmousedown = (e) => {
+                if (isPatching) return;
+                e.stopPropagation();
+
+                const isCurrentSelected = state.selection.notes.some(n => n.trackId === track.id && n.row === rIdx && n.step === s);
+
+                if (e.shiftKey) {
+                    // Resize Note Length
+                    isDraggingPip = false;
+                    e.preventDefault();
+                    const rect = inner.getBoundingClientRect();
+                    const currentNl = typeof track.grid[rIdx][s] === 'object' ? track.grid[rIdx][s].length : 1.0;
+                    const cellW = rect.width / currentNl;
+                    let startX = e.clientX, startL = currentNl;
+                    const onMove = (me) => {
+                        let dl = Math.round(((me.clientX - startX) / cellW) * 4) / 4;
+                        track.grid[rIdx][s] = { on: true, length: Math.max(0.25, startL + dl) };
+                        updateTrackGrid(track);
+                    };
+                    const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+                    window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
+                } else if (isCurrentSelected) {
+                    // Start Moving Selection
+                    state.dragSelection.active = true;
+                    state.dragSelection.startStep = s;
+                    state.dragSelection.startRow = rIdx;
+                    state.dragSelection.trackId = track.id;
+
+                    // Capture initial states of all selected notes
+                    const initialNotes = state.selection.notes.map(n => {
+                        const tr = state.tracks.find(t => t.id === n.trackId);
+                        return { ...n, data: JSON.parse(JSON.stringify(tr.grid[n.row][n.step])) };
+                    });
+
+                    const onMove = (me) => {
+                        if (!state.hoveredGrid) return;
+                        const ds = state.hoveredGrid.step - state.dragSelection.startStep;
+                        const dr = state.hoveredGrid.row - state.dragSelection.startRow;
+                        if (ds === 0 && dr === 0) return;
+
+                        // Clear current grid positions of selection
+                        initialNotes.forEach(n => {
+                            const tr = state.tracks.find(t => t.id === n.trackId);
+                            if (tr && tr.grid[n.row] && tr.grid[n.row][n.step]) {
+                                tr.grid[n.row][n.step] = { on: false, length: 1.0 };
+                            }
+                        });
+
+                        // Place at new positions
+                        const newSelection = [];
+                        initialNotes.forEach(n => {
+                            const tr = state.tracks.find(t => t.id === n.trackId);
+                            const nr = n.row + dr;
+                            const ns = n.step + ds;
+                            if (tr && tr.grid[nr] && ns >= 0 && ns < 256) {
+                                tr.grid[nr][ns] = n.data;
+                                newSelection.push({ trackId: n.trackId, row: nr, step: ns });
+                            }
+                        });
+
+                        state.selection.notes = newSelection;
+                        state.dragSelection.startStep += ds;
+                        state.dragSelection.startRow += dr;
+
+                        // Update all affected tracks
+                        const affectedTracks = new Set(initialNotes.map(n => n.trackId).concat(newSelection.map(n => n.trackId)));
+                        affectedTracks.forEach(tId => {
+                            const tr = state.tracks.find(t => t.id === tId);
+                            if (tr) updateTrackGrid(tr);
+                        });
+                    };
+                    const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+                    window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
+                } else {
+                    // Simple Delete if not selected and not shift
+                    dragDrawMode = false;
+                    track.grid[rIdx][s] = { on: false, length: 1.0 };
+                    updateTrackGrid(track);
+                }
+            };
+            return inner;
+        }
+
+        function updateAllTrackGrids() {
+            state.tracks.forEach(track => updateTrackGrid(track));
+        }
+
+        function updateTrackGrid(track) {
+            const trackEl = document.getElementById(`track_${track.id}`);
+            if (!trackEl || track.minimized) return;
+            const rows = trackEl.querySelectorAll('.grid-row');
+            rows.forEach((rowEl, rIdx) => {
+                const steps = rowEl.querySelectorAll('.step');
+                steps.forEach(stepEl => {
+                    const s = parseInt(stepEl.dataset.step);
+                    if (isNaN(s)) return;
+                    const sd = track.grid[rIdx][s];
+                    const isOn = typeof sd === 'object' ? sd.on : !!sd;
+                    const nl = typeof sd === 'object' ? sd.length : 1.0;
+                    const isSelected = state.selection.notes.some(n => n.trackId === track.id && n.row === rIdx && n.step === s);
+
+                    const inner = stepEl.firstElementChild;
+                    if (isOn) {
+                        if (!inner) {
+                            stepEl.appendChild(createStepInner(track, rIdx, s));
+                        } else {
+                            inner.className = 'step-inner' + (isSelected ? ' selected' : '');
+                            inner.style.width = `calc(${nl * 100}% + ${(nl - 1) * 2}px)`;
+                        }
+                    } else {
+                        if (inner) {
+                            stepEl.removeChild(inner);
+                        }
+                    }
+                });
+            });
+        }
+
         function renderTracks() {
-            tracksContainer.innerHTML = '';
+            tracksContainer.textContent = '';
             state.tracks.forEach((track, index) => {
                 const template = instrumentTypes[track.typeId];
                 const trackEl = document.createElement('div');
@@ -1917,8 +2163,23 @@
                 }
 
                 const volGroup = document.createElement('div'); volGroup.className = 'slider-group';
-                volGroup.innerHTML = `<span class="label">VOL</span><input type="range" min="0" max="1" step="0.05" value="${track.volume}" style="width:60px;">`;
-                volGroup.querySelector('input').oninput = (e) => { track.volume = parseFloat(e.target.value); track.gainNode.gain.value = track.volume; };
+
+                const volLabel = document.createElement('span');
+                volLabel.className = 'label';
+                volLabel.textContent = 'VOL';
+
+                const volInput = document.createElement('input');
+                volInput.type = 'range';
+                volInput.min = '0';
+                volInput.max = '1';
+                volInput.step = '0.05';
+                volInput.value = track.volume;
+                volInput.style.width = '60px';
+
+                volGroup.appendChild(volLabel);
+                volGroup.appendChild(volInput);
+
+                volInput.oninput = (e) => { track.volume = parseFloat(e.target.value); track.gainNode.gain.value = track.volume; };
 
                 let adsrGroup = null;
                 if (track.adsr) {
@@ -1995,23 +2256,28 @@
                     loopSelect.appendChild(opt);
                 });
                 loopSelect.onchange = (e) => { track.loopMultiplier = parseInt(e.target.value); renderTracks(); };
-                loopGroup.innerHTML = `<span class="label">LOOP</span>`;
+
+                const loopLabel = document.createElement('span');
+                loopLabel.className = 'label';
+                loopLabel.textContent = 'LOOP';
+
+                loopGroup.appendChild(loopLabel);
                 loopGroup.appendChild(loopSelect);
 
                 const subdivSelect = document.createElement('select');
-                subdivSelect.innerHTML = `
-                    <option value="0.25">1/1</option>
-                    <option value="0.5">1/2</option>
-                    <option value="1">1/4</option>
-                    <option value="1.5">1/4T</option>
-                    <option value="0.666">1/4D</option>
-                    <option value="2">1/8</option>
-                    <option value="3">1/8T</option>
-                    <option value="1.333">1/8D</option>
-                    <option value="4">1/16</option>
-                    <option value="6">1/16T</option>
-                    <option value="8">1/32</option>
-                `;
+                const subdivOptions = [
+                    {val: '0.25', text: '1/1'}, {val: '0.5', text: '1/2'}, {val: '1', text: '1/4'},
+                    {val: '1.5', text: '1/4T'}, {val: '0.666', text: '1/4D'}, {val: '2', text: '1/8'},
+                    {val: '3', text: '1/8T'}, {val: '1.333', text: '1/8D'}, {val: '4', text: '1/16'},
+                    {val: '6', text: '1/16T'}, {val: '8', text: '1/32'}
+                ];
+                subdivOptions.forEach(optData => {
+                    const opt = document.createElement('option');
+                    opt.value = optData.val;
+                    opt.textContent = optData.text;
+                    subdivSelect.appendChild(opt);
+                });
+
                 subdivSelect.value = track.subdiv || 4; subdivSelect.onchange = (e) => { track.subdiv = parseFloat(e.target.value); renderTracks(); };
 
                 const randStyleSelect = document.createElement('select'); randStyleSelect.style.cssText = 'width: 55px; font-size: 0.55rem;';
@@ -2060,9 +2326,9 @@
 
                 const fillBtn = document.createElement('button');
                 fillBtn.textContent = '♾️'; fillBtn.title = "Fill the Roll: Repeat 1st measure pattern across the loop";
-                fillBtn.onclick = () => { fillTrackPattern(track); renderTracks(); };
+                fillBtn.onclick = () => { fillTrackPattern(track); updateTrackGrid(track); };
 
-                const clearBtn = document.createElement('button'); clearBtn.textContent = '✕'; clearBtn.style.color = 'var(--accent-pink)'; clearBtn.onclick = () => { track.grid.forEach(row => row.fill(false)); renderTracks(); };
+                const clearBtn = document.createElement('button'); clearBtn.textContent = '✕'; clearBtn.style.color = 'var(--accent-pink)'; clearBtn.onclick = () => { track.grid.forEach(row => row.fill(false)); updateTrackGrid(track); };
 
                 const randGroup = document.createElement('div');
                 randGroup.style.cssText = 'display:flex; flex-direction:column; gap:4px; padding:6px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:6px; margin-left:auto; min-width:200px;';
@@ -2098,18 +2364,53 @@
 
                 // Filter Type Selector
                 const filterGroup = document.createElement('div'); filterGroup.style.cssText = 'display:flex; flex-direction:column; align-items:center; gap:2px; margin-left:6px;';
-                filterGroup.innerHTML = `<span class="label" style="font-size:0.45rem; opacity:0.6;">TYPE</span><select style="font-size:0.55rem; width:42px; background:rgba(0,0,0,0.2); color:var(--accent-cyan); border:1px solid var(--glass-border); padding:0 2px;">
-                    <option value="lowpass" ${track.filterNode.type === 'lowpass' ? 'selected' : ''}>LP</option>
-                    <option value="highpass" ${track.filterNode.type === 'highpass' ? 'selected' : ''}>HP</option>
-                    <option value="bandpass" ${track.filterNode.type === 'bandpass' ? 'selected' : ''}>BP</option>
-                </select>`;
+
+                const filterLabel = document.createElement('span');
+                filterLabel.className = 'label';
+                filterLabel.style.cssText = 'font-size:0.45rem; opacity:0.6;';
+                filterLabel.textContent = 'TYPE';
+
+                const filterSelect = document.createElement('select');
+                filterSelect.style.cssText = 'font-size:0.55rem; width:42px; background:rgba(0,0,0,0.2); color:var(--accent-cyan); border:1px solid var(--glass-border); padding:0 2px;';
+
+                const fTypes = [
+                    {val: 'lowpass', text: 'LP'},
+                    {val: 'highpass', text: 'HP'},
+                    {val: 'bandpass', text: 'BP'}
+                ];
+                fTypes.forEach(ft => {
+                    const fOpt = document.createElement('option');
+                    fOpt.value = ft.val;
+                    fOpt.textContent = ft.text;
+                    if (track.filterNode.type === ft.val) fOpt.selected = true;
+                    filterSelect.appendChild(fOpt);
+                });
+
+                filterGroup.appendChild(filterLabel);
+                filterGroup.appendChild(filterSelect);
+
                 if (track.filterNode.type === 'notch') track.filterNode.type = 'lowpass';
-                filterGroup.querySelector('select').onchange = (e) => { track.filterNode.type = e.target.value; };
+                filterSelect.onchange = (e) => { track.filterNode.type = e.target.value; };
 
                 // Panning Slider
                 const panGroup = document.createElement('div'); panGroup.className = 'slider-group'; panGroup.style.marginLeft = '4px';
-                panGroup.innerHTML = `<span class="label">PAN</span><input type="range" min="-1" max="1" step="0.1" value="${track.panNode.pan.value}" style="width:60px; height:3px;">`;
-                panGroup.querySelector('input').oninput = (e) => { track.panNode.pan.setTargetAtTime(parseFloat(e.target.value), audioCtx.currentTime, 0.05); };
+
+                const panLabel = document.createElement('span');
+                panLabel.className = 'label';
+                panLabel.textContent = 'PAN';
+
+                const panInput = document.createElement('input');
+                panInput.type = 'range';
+                panInput.min = '-1';
+                panInput.max = '1';
+                panInput.step = '0.1';
+                panInput.value = track.panNode.pan.value;
+                panInput.style.cssText = 'width:60px; height:3px;';
+
+                panGroup.appendChild(panLabel);
+                panGroup.appendChild(panInput);
+
+                panInput.oninput = (e) => { track.panNode.pan.setTargetAtTime(parseFloat(e.target.value), audioCtx.currentTime, 0.05); };
 
                 const xyGroup = document.createElement('div'); xyGroup.className = 'xy-group';
                 const xyCont = document.createElement('div'); xyCont.className = 'xy-container';
@@ -2123,25 +2424,29 @@
                 
                 // Q Input (Resonance) - Matches Y axis
                 const qWrap = document.createElement('div'); qWrap.style.cssText = 'display:flex; align-items:center; gap:3px; font-size:0.5rem; color:var(--accent-pink); font-weight:bold;';
-                qWrap.innerHTML = `<span>Q</span>`;
+                const spanQ = document.createElement('span'); spanQ.textContent = 'Q';
+                qWrap.appendChild(spanQ);
                 const modY = document.createElement('div'); modY.className = `patch-point mod-in ${track.modLinks.y ? 'active' : ''}`; modY.id = `mod_y_${track.id}`; modY.title = "Modulate Resonance (Q)";
                 qWrap.appendChild(modY);
 
                 // F Input (Frequency) - Matches X axis
                 const fWrap = document.createElement('div'); fWrap.style.cssText = 'display:flex; align-items:center; gap:3px; font-size:0.5rem; color:var(--accent-cyan); font-weight:bold;';
-                fWrap.innerHTML = `<span>F</span>`;
+                const spanF = document.createElement('span'); spanF.textContent = 'F';
+                fWrap.appendChild(spanF);
                 const modX = document.createElement('div'); modX.className = `patch-point mod-in ${track.modLinks.x ? 'active' : ''}`; modX.id = `mod_x_${track.id}`; modX.title = "Modulate Cutoff (Frequency)";
                 fWrap.appendChild(modX);
 
                 // Decay Input
                 const dWrap = document.createElement('div'); dWrap.style.cssText = 'display:flex; align-items:center; gap:3px; font-size:0.5rem; color:var(--accent-yellow); font-weight:bold;';
-                dWrap.innerHTML = `<span>D</span>`;
+                const spanD = document.createElement('span'); spanD.textContent = 'D';
+                dWrap.appendChild(spanD);
                 const modDecay = document.createElement('div'); modDecay.className = `patch-point mod-in ${track.modLinks.decay ? 'active' : ''}`; modDecay.id = `mod_decay_${track.id}`; modDecay.title = "Modulate ADSR Decay (Punchiness)";
                 dWrap.appendChild(modDecay);
 
                 // Attack/Release Input
                 const arWrap = document.createElement('div'); arWrap.style.cssText = 'display:flex; align-items:center; gap:3px; font-size:0.5rem; color:var(--accent-pink); font-weight:bold;';
-                arWrap.innerHTML = `<span>A/R</span>`;
+                const spanAR = document.createElement('span'); spanAR.textContent = 'A/R';
+                arWrap.appendChild(spanAR);
                 const modADSR = document.createElement('div'); modADSR.className = `patch-point mod-in ${track.modLinks.adsr ? 'active' : ''}`; modADSR.id = `mod_adsr_${track.id}`; modADSR.title = "Modulate Attack & Release (Builds/Tension)";
                 arWrap.appendChild(modADSR);
 
@@ -2267,9 +2572,11 @@
                             const step = document.createElement('div'); step.className = `step ${isLight ? 'light-beat' : ''}`;
                             step.dataset.step = s;
                             const renderCell = () => {
-                                const sd = track.grid[rIdx][s]; const isOn = typeof sd === 'object' ? sd.on : !!sd; const nl = typeof sd === 'object' ? sd.length : 1.0;
+                                const sd = track.grid[rIdx][s];
+                                const isOn = typeof sd === 'object' ? sd.on : !!sd;
+                                const nl = typeof sd === 'object' ? sd.length : 1.0;
                                 const isSelected = state.selection.notes.some(n => n.trackId === track.id && n.row === rIdx && n.step === s);
-                                step.innerHTML = ''; if (isOn) {
+                                step.textContent = ''; if (isOn) {
                                     const inner = document.createElement('div'); 
                                     inner.className = 'step-inner' + (isSelected ? ' selected' : ''); 
                                     inner.style.width = `calc(${nl * 100}% + ${(nl - 1) * 2}px)`; 
@@ -2300,9 +2607,15 @@
                                             state.dragSelection.startRow = rIdx;
                                             state.dragSelection.trackId = track.id;
                                             
+                                            const trackMap = Object.create(null);
+                                            for (let i = 0; i < state.tracks.length; i++) {
+                                                trackMap[state.tracks[i].id] = state.tracks[i];
+                                            }
+
                                             // Capture initial states of all selected notes
                                             const initialNotes = state.selection.notes.map(n => {
                                                 const tr = state.lookup.tracks.get(n.trackId);
+                                                const tr = trackMap[n.trackId];
                                                 return { ...n, data: JSON.parse(JSON.stringify(tr.grid[n.row][n.step])) };
                                             });
 
@@ -2315,6 +2628,7 @@
                                                 // Clear current grid positions of selection
                                                 initialNotes.forEach(n => {
                                                     const tr = state.lookup.tracks.get(n.trackId);
+                                                    const tr = trackMap[n.trackId];
                                                     tr.grid[n.row][n.step] = { on: false, length: 1.0 };
                                                 });
 
@@ -2322,6 +2636,7 @@
                                                 const newSelection = [];
                                                 initialNotes.forEach(n => {
                                                     const tr = state.lookup.tracks.get(n.trackId);
+                                                    const tr = trackMap[n.trackId];
                                                     const nr = n.row + dr;
                                                     const ns = n.step + ds;
                                                     if (tr.grid[nr] && ns >= 0 && ns < 256) {
@@ -2348,12 +2663,12 @@
                                 }
                             };
                             renderCell();
-                            step.onmousedown = (e) => { if (isPatching || e.shiftKey) return; dragDrawMode = !(typeof track.grid[rIdx][s] === 'object' ? track.grid[rIdx][s].on : !!track.grid[rIdx][s]); track.grid[rIdx][s] = { on: dragDrawMode, length: 1.0 }; renderCell(); };
+                            step.onmousedown = (e) => { if (isPatching || e.shiftKey) return; dragDrawMode = !(typeof track.grid[rIdx][s] === 'object' ? track.grid[rIdx][s].on : !!track.grid[rIdx][s]); track.grid[rIdx][s] = { on: dragDrawMode, length: 1.0 }; updateTrackGrid(track); };
                             step.onmouseenter = () => { 
                                 state.hoveredGrid = { trackId: track.id, row: rIdx, step: s };
                                 if (!isPatching && isDraggingPip && !window.event?.shiftKey) { 
                                     track.grid[rIdx][s] = { on: dragDrawMode, length: 1.0 }; 
-                                    renderCell(); 
+                                    updateTrackGrid(track);
                                 } 
                             };
                             step.onmouseleave = () => {
@@ -2396,14 +2711,19 @@
 
             const addBtn = document.createElement('button');
             addBtn.className = 'add-track-btn';
-            addBtn.innerHTML = '<span>+</span> ADD INSTRUMENT TRACK';
+            const spanPlus = document.createElement('span');
+            spanPlus.textContent = '+';
+            addBtn.appendChild(spanPlus);
+            addBtn.appendChild(document.createTextNode(' ADD INSTRUMENT TRACK'));
             addBtn.onclick = () => {
                 state.tracks.push(createTrack('synthwave'));
                 refreshLookupMap();
+                state.tracks.push(createTrack('synthwave')); refreshLookupMap();
                 renderTracks();
             };
             tracksContainer.appendChild(addBtn);
 
+            updateCableElementCache();
             updateFixedCables();
         }
 
@@ -2452,7 +2772,7 @@
         function renderFxPanels() {
             const aside = document.getElementById('fx-aside');
             if (!aside) return;
-            aside.innerHTML = '';
+            aside.textContent = '';
             state.fxUnits.forEach((unit, idx) => {
                 const panel = document.createElement('div');
                 panel.className = 'panel fx-panel';
@@ -2471,25 +2791,42 @@
                     { val: 'sidechain', label: 'SIDECHAIN' }
                 ];
 
-                let typeSelector = `<select class="fx-type-select" style="background:var(--surface); color:var(--accent-cyan); font-weight:800; border:1px solid var(--glass-border); padding:3px 6px; border-radius:4px; font-size:0.65rem;">`;
+                const typeSelect = document.createElement('select');
+                typeSelect.className = 'fx-type-select';
+                typeSelect.style.cssText = 'background:var(--surface); color:var(--accent-cyan); font-weight:800; border:1px solid var(--glass-border); padding:3px 6px; border-radius:4px; font-size:0.65rem;';
+
                 typeOptions.forEach(opt => {
-                    typeSelector += `<option value="${opt.val}" ${unit.type === opt.val ? 'selected' : ''}>${opt.label}</option>`;
+                    const optionEl = document.createElement('option');
+                    optionEl.value = opt.val;
+                    optionEl.textContent = opt.label;
+                    if (unit.type === opt.val) optionEl.selected = true;
+                    typeSelect.appendChild(optionEl);
                 });
-                typeSelector += `</select>`;
 
-                panel.innerHTML = `
-                    <div class="panel-header" style="justify-content: flex-start; gap: 8px; border-bottom: 1px solid var(--glass-border);">
-                        <div class="patch-point audio-in" id="audio_in_${unit.id}" title="Wire track output here" style="border-color: #00f2ff;"></div>
-                        ${typeSelector}
-                        <span style="margin-left:auto; color:var(--text-dim); font-size:0.5rem;">#${idx + 1}</span>
-                    </div>
-                    <div class="panel-content fx-controls" style="height: auto; padding: 10px; display:flex; flex-direction:column; gap:8px;">
-                        <!-- Controls injected below -->
-                    </div>
-                `;
+                const panelHeader = document.createElement('div');
+                panelHeader.className = 'panel-header';
+                panelHeader.style.cssText = 'justify-content: flex-start; gap: 8px; border-bottom: 1px solid var(--glass-border);';
 
-                const controlsCont = panel.querySelector('.fx-controls');
-                const typeSelect = panel.querySelector('.fx-type-select');
+                const patchIn = document.createElement('div');
+                patchIn.className = 'patch-point audio-in';
+                patchIn.id = `audio_in_${unit.id}`;
+                patchIn.title = "Wire track output here";
+                patchIn.style.borderColor = '#00f2ff';
+
+                const spanIdx = document.createElement('span');
+                spanIdx.style.cssText = 'margin-left:auto; color:var(--text-dim); font-size:0.5rem;';
+                spanIdx.textContent = `#${idx + 1}`;
+
+                panelHeader.appendChild(patchIn);
+                panelHeader.appendChild(typeSelect);
+                panelHeader.appendChild(spanIdx);
+
+                const controlsCont = document.createElement('div');
+                controlsCont.className = 'panel-content fx-controls';
+                controlsCont.style.cssText = 'height: auto; padding: 10px; display:flex; flex-direction:column; gap:8px;';
+
+                panel.appendChild(panelHeader);
+                panel.appendChild(controlsCont);
 
                 typeSelect.onchange = (e) => {
                     unit.type = e.target.value;
@@ -2501,11 +2838,33 @@
                 const renderSlider = (label, key, min, max, step, suffix = '') => {
                     const row = document.createElement('div');
                     row.className = 'slider-group';
-                    row.innerHTML = `<span class="label" style="width:50px; font-size:0.6rem;">${label}</span>
-                                     <input type="range" min="${min}" max="${max}" step="${step}" value="${unit.params[key]}" style="flex:1;">
-                                     <span class="val-disp label" style="width:40px; text-align:right; font-size:0.6rem; color:var(--accent-cyan);">${unit.params[key]}${suffix}</span>`;
-                    const input = row.querySelector('input');
-                    const disp = row.querySelector('.val-disp');
+
+                    const spanLabel = document.createElement('span');
+                    spanLabel.className = 'label';
+                    spanLabel.style.width = '50px';
+                    spanLabel.style.fontSize = '0.6rem';
+                    spanLabel.textContent = label;
+
+                    const input = document.createElement('input');
+                    input.type = 'range';
+                    input.min = min;
+                    input.max = max;
+                    input.step = step;
+                    input.value = unit.params[key];
+                    input.style.flex = '1';
+
+                    const disp = document.createElement('span');
+                    disp.className = 'val-disp label';
+                    disp.style.width = '40px';
+                    disp.style.textAlign = 'right';
+                    disp.style.fontSize = '0.6rem';
+                    disp.style.color = 'var(--accent-cyan)';
+                    disp.textContent = unit.params[key] + suffix;
+
+                    row.appendChild(spanLabel);
+                    row.appendChild(input);
+                    row.appendChild(disp);
+
                     input.oninput = (e) => {
                         unit.params[key] = parseFloat(e.target.value);
                         disp.textContent = unit.params[key] + suffix;
@@ -2545,10 +2904,19 @@
                 if (syncParams[type]) {
                     const syncRow = document.createElement('div');
                     syncRow.style.marginTop = '4px';
-                    syncRow.innerHTML = `<label style="font-family:var(--font-mono); font-size:0.6rem; color:var(--text-dim); display:flex; align-items:center; gap:8px; cursor:pointer;">
-                                            <input type="checkbox" class="fx-sync-chk" ${unit.params.sync ? 'checked' : ''}> SYNC TO BPM
-                                         </label>`;
-                    const syncChk = syncRow.querySelector('input');
+
+                    const labelSync = document.createElement('label');
+                    labelSync.style.cssText = 'font-family:var(--font-mono); font-size:0.6rem; color:var(--text-dim); display:flex; align-items:center; gap:8px; cursor:pointer;';
+
+                    const syncChk = document.createElement('input');
+                    syncChk.type = 'checkbox';
+                    syncChk.className = 'fx-sync-chk';
+                    syncChk.checked = !!unit.params.sync;
+
+                    labelSync.appendChild(syncChk);
+                    labelSync.appendChild(document.createTextNode(' SYNC TO BPM'));
+                    syncRow.appendChild(labelSync);
+
                     syncChk.onchange = (e) => {
                         unit.params.sync = e.target.checked;
                         renderFxPanels();
@@ -2559,21 +2927,42 @@
                     if (unit.params.sync) {
                         const row = document.createElement('div');
                         row.className = 'slider-group';
-                        row.innerHTML = `<span class="label" style="width:50px; font-size:0.6rem;">DIV</span>
-                                         <select class="fx-sync-select" style="flex:1; font-size:0.65rem; background:var(--surface); color:var(--text-main); border:1px solid var(--glass-border);">
-                                            <option value="4" ${unit.params.syncRate === 4 ? 'selected' : ''}>1/1 (Whole)</option>
-                                            <option value="2" ${unit.params.syncRate === 2 ? 'selected' : ''}>1/2 (Half)</option>
-                                            <option value="3" ${unit.params.syncRate === 3 ? 'selected' : ''}>1/2D (Dotted)</option>
-                                            <option value="1.333" ${unit.params.syncRate === 1.333 ? 'selected' : ''}>1/2T (Triplet)</option>
-                                            <option value="1" ${unit.params.syncRate === 1 ? 'selected' : ''}>1/4</option>
-                                            <option value="1.5" ${unit.params.syncRate === 1.5 ? 'selected' : ''}>1/4D</option>
-                                            <option value="0.666" ${unit.params.syncRate === 0.666 ? 'selected' : ''}>1/4T</option>
-                                            <option value="0.5" ${unit.params.syncRate === 0.5 ? 'selected' : ''}>1/8</option>
-                                            <option value="0.75" ${unit.params.syncRate === 0.75 ? 'selected' : ''}>1/8D</option>
-                                            <option value="0.333" ${unit.params.syncRate === 0.333 ? 'selected' : ''}>1/8T</option>
-                                            <option value="0.25" ${unit.params.syncRate === 0.25 ? 'selected' : ''}>1/16</option>
-                                         </select>`;
-                        const syncS = row.querySelector('select');
+
+                        const spanDiv = document.createElement('span');
+                        spanDiv.className = 'label';
+                        spanDiv.style.width = '50px';
+                        spanDiv.style.fontSize = '0.6rem';
+                        spanDiv.textContent = 'DIV';
+
+                        const syncS = document.createElement('select');
+                        syncS.className = 'fx-sync-select';
+                        syncS.style.cssText = 'flex:1; font-size:0.65rem; background:var(--surface); color:var(--text-main); border:1px solid var(--glass-border);';
+
+                        const rateOptions = [
+                            { val: 4, label: '1/1 (Whole)' },
+                            { val: 2, label: '1/2 (Half)' },
+                            { val: 3, label: '1/2D (Dotted)' },
+                            { val: 1.333, label: '1/2T (Triplet)' },
+                            { val: 1, label: '1/4' },
+                            { val: 1.5, label: '1/4D' },
+                            { val: 0.666, label: '1/4T' },
+                            { val: 0.5, label: '1/8' },
+                            { val: 0.75, label: '1/8D' },
+                            { val: 0.333, label: '1/8T' },
+                            { val: 0.25, label: '1/16' }
+                        ];
+
+                        rateOptions.forEach(opt => {
+                            const optionEl = document.createElement('option');
+                            optionEl.value = opt.val;
+                            optionEl.textContent = opt.label;
+                            if (unit.params.syncRate === opt.val) optionEl.selected = true;
+                            syncS.appendChild(optionEl);
+                        });
+
+                        row.appendChild(spanDiv);
+                        row.appendChild(syncS);
+
                         syncS.onchange = (e) => {
                             unit.params.syncRate = parseFloat(e.target.value);
                             updateFxParams(unit, panel);
@@ -2585,6 +2974,7 @@
                 panel.appendChild(controlsCont);
                 aside.appendChild(panel);
             });
+            updateCableElementCache();
             updateFixedCables();
         }
         renderFxPanels();
@@ -2592,7 +2982,7 @@
         function renderBeatCounter() {
             const container = document.getElementById('beat-counter');
             if (!container) return;
-            container.innerHTML = '';
+            container.textContent = '';
             for (let i = 0; i < state.timeSignature; i++) {
                 const pip = document.createElement('div');
                 pip.className = 'beat-pip';
@@ -2603,30 +2993,38 @@
 
         // --- Scene Management ---
         function saveScene(idx) {
-            state.scenes[idx] = state.tracks.map(t => ({
-                typeId: t.typeId,
-                grid: JSON.parse(JSON.stringify(t.grid)),
-                volume: t.volume,
-                subdiv: t.subdiv,
-                octaveOffset: t.octaveOffset,
-                muted: t.muted, solo: t.solo,
-                loopLength: t.loopLength,
-                randStyle: t.randStyle, randDensity: t.randDensity,
-                adsr: t.adsr ? { ...t.adsr } : null,
-                sidechainEnabled: t.sidechainEnabled
-            }));
+            state.scenes[idx] = {
+                tracks: state.tracks.map(t => ({
+                    typeId: t.typeId,
+                    grid: JSON.parse(JSON.stringify(t.grid)),
+                    volume: t.volume,
+                    subdiv: t.subdiv,
+                    octaveOffset: t.octaveOffset,
+                    muted: t.muted, solo: t.solo,
+                    loopLength: t.loopLength,
+                    randStyle: t.randStyle, randDensity: t.randDensity,
+                    adsr: t.adsr ? { ...t.adsr } : null,
+                    sidechainEnabled: t.sidechainEnabled
+                })),
+                fx: state.fxUnits.map(u => ({
+                    type: u.type,
+                    params: JSON.parse(JSON.stringify(u.params))
+                })),
+                bpm: state.bpm,
+                key: state.globalKey,
+                scale: state.globalScale
+            };
             renderScenes();
         }
 
         function loadScene(idx) {
             if (!state.scenes[idx]) return;
-            const data = state.scenes[idx];
+            const scene = state.scenes[idx];
 
-            // Re-map tracks (careful with audio context)
-            data.forEach((trackData, i) => {
+            // 1. Restore Tracks
+            scene.tracks.forEach((trackData, i) => {
                 if (i < state.tracks.length) {
                     const t = state.tracks[i];
-                    // If type changed, we should ideally recreate, but for now let's sync state
                     t.typeId = trackData.typeId;
                     t.grid = trackData.grid;
                     t.volume = trackData.volume;
@@ -2637,19 +3035,49 @@
                     t.randStyle = trackData.randStyle; t.randDensity = trackData.randDensity;
                     if (trackData.adsr) t.adsr = { ...trackData.adsr };
                     t.sidechainEnabled = trackData.sidechainEnabled;
-
-                    // Update audio nodes
                     t.gainNode.gain.value = t.muted ? 0 : t.volume;
                 }
             });
+
+            // 2. Restore FX
+            if (scene.fx) {
+                scene.fx.forEach((fxData, i) => {
+                    if (i < state.fxUnits.length) {
+                        const u = state.fxUnits[i];
+                        if (u.type !== fxData.type) {
+                            u.type = fxData.type;
+                            setupFxNodes(u);
+                        }
+                        u.params = JSON.parse(JSON.stringify(fxData.params));
+                        updateFxParams(u, null);
+                    }
+                });
+            }
+
+            // 3. Restore Global BPM/Key/Scale
+            if (scene.bpm) {
+                state.bpm = scene.bpm;
+                document.getElementById('bpm-input').value = state.bpm;
+            }
+            if (scene.key) {
+                state.globalKey = scene.key;
+                document.getElementById('key-input').value = state.globalKey;
+            }
+            if (scene.scale) {
+                state.globalScale = scene.scale;
+                document.getElementById('scale-input').value = state.globalScale;
+            }
+
+            changeScale();
             renderTracks();
+            renderFxPanels();
             renderScenes();
         }
 
         function renderScenes() {
             const cont = document.getElementById('scene-container');
             if (!cont) return;
-            cont.innerHTML = '';
+            cont.textContent = '';
             for (let i = 0; i < 8; i++) {
                 const btn = document.createElement('button');
                 btn.textContent = i + 1;
@@ -2830,7 +3258,7 @@
                     }
                 }
             }
-            renderTracks();
+            updateTrackGrid(track);
         }
 
         // --- Cable Patching System ---
@@ -3003,23 +3431,26 @@
             }
         });
 
+
+
         function updateFixedCables() {
             const svg = document.getElementById('cable-svg');
+            // Optimise querySelectorAll if needed, but getElementById was the main concern
             svg.querySelectorAll('.fixed-cable').forEach(el => el.remove());
 
             state.drawers.forEach(drawer => {
                 if (drawer.connection) {
-                    const outEl = document.getElementById(`out_${drawer.id}`);
-                    let inEl = document.getElementById(`in_${drawer.connection}`);
+                    const outEl = window.cableElementCache.out.get(`out_${drawer.id}`);
+                    let inEl = window.cableElementCache.in.get(`in_${drawer.connection}`);
 
                     // Specific check for XY mod inputs
                     const track = state.lookup.tracks.get(drawer.connection);
                     if (track) {
-                        if (track.modLinks.x === drawer.id) inEl = document.getElementById(`mod_x_${track.id}`);
-                        else if (track.modLinks.y === drawer.id) inEl = document.getElementById(`mod_y_${track.id}`);
-                        else if (track.modLinks.decay === drawer.id) inEl = document.getElementById(`mod_decay_${track.id}`);
-                        else if (track.modLinks.adsr === drawer.id) inEl = document.getElementById(`mod_adsr_${track.id}`);
-                        else inEl = document.getElementById(`in_${track.id}`); // Default jack
+                        if (track.modLinks.x === drawer.id) inEl = window.cableElementCache.mod_x.get(`mod_x_${track.id}`);
+                        else if (track.modLinks.y === drawer.id) inEl = window.cableElementCache.mod_y.get(`mod_y_${track.id}`);
+                        else if (track.modLinks.decay === drawer.id) inEl = window.cableElementCache.mod_decay.get(`mod_decay_${track.id}`);
+                        else if (track.modLinks.adsr === drawer.id) inEl = window.cableElementCache.mod_adsr.get(`mod_adsr_${track.id}`);
+                        else inEl = window.cableElementCache.in.get(`in_${track.id}`); // Default jack
                     }
 
                     if (outEl && inEl) {
@@ -3034,8 +3465,8 @@
 
             state.tracks.forEach(track => {
                 if (track.audioRoute && track.audioRoute !== 'master') {
-                    const outEl = document.getElementById(`audio_out_${track.id}`);
-                    const inEl = document.getElementById(`audio_in_${track.audioRoute}`);
+                    const outEl = window.cableElementCache.audio_out.get(`audio_out_${track.id}`);
+                    const inEl = window.cableElementCache.audio_in.get(`audio_in_${track.audioRoute}`);
                     if (outEl && inEl) {
                         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                         path.setAttribute('class', 'cable-path fixed-cable');
@@ -3508,7 +3939,12 @@
             state.activeNotes.forEach((voice, voiceId) => {
                 const now = audioCtx.currentTime;
                 try {
-                    voice.gain.gain.cancelScheduledValues(now);
+                    if (typeof voice.gain.gain.cancelAndHoldAtTime === 'function') {
+                        voice.gain.gain.cancelAndHoldAtTime(now);
+                    } else {
+                        voice.gain.gain.cancelScheduledValues(now);
+                        try { voice.gain.gain.setValueAtTime(voice.gain.gain.value, now); } catch(e) {}
+                    }
                     voice.gain.gain.setTargetAtTime(0, now, 0.01); 
                     voice.nodes.forEach(n => { if (n.stop) n.stop(now + 0.1); });
                     if (voice.lfo) voice.lfo.stop(now + 0.1);
@@ -3528,7 +3964,12 @@
                     const rSecs = adsr ? Math.max(0.01, adsr.r * beatDur) : 0.02;
                     
                     try {
-                        voice.gain.gain.cancelScheduledValues(targetTime);
+                        if (typeof voice.gain.gain.cancelAndHoldAtTime === 'function') {
+                            voice.gain.gain.cancelAndHoldAtTime(targetTime);
+                        } else {
+                            voice.gain.gain.cancelScheduledValues(targetTime);
+                            try { voice.gain.gain.setValueAtTime(voice.gain.gain.value, targetTime); } catch(e) {}
+                        }
                         voice.gain.gain.setTargetAtTime(0, targetTime, rSecs / 3); 
                         
                         const stopTime = targetTime + rSecs * 2; // Extra buffer
@@ -3661,7 +4102,12 @@
             state.tracks.forEach(track => {
                 if (track.sidechainEnabled && track.sidechainNode) {
                     const node = track.sidechainNode;
-                    node.gain.cancelScheduledValues(time);
+                    if (typeof node.gain.cancelAndHoldAtTime === 'function') {
+                        node.gain.cancelAndHoldAtTime(time);
+                    } else {
+                        node.gain.cancelScheduledValues(time);
+                        try { node.gain.setValueAtTime(node.gain.value, time); } catch(e) {}
+                    }
                     node.gain.setValueAtTime(1.0, time);
                     node.gain.exponentialRampToValueAtTime(0.001, time + 0.01);
                     node.gain.exponentialRampToValueAtTime(1.0, time + beatDur * 0.2);
@@ -3698,8 +4144,7 @@
 
                 if (state.isPlaying) {
                     const currentBeat = Math.floor((step % state.totalSteps) / state.stepsPerBeat);
-                    const beatPips = document.querySelectorAll('#beat-counter .beat-pip');
-                    beatPips.forEach((pip, idx) => {
+                    cachedBeatPips.forEach((pip, idx) => {
                         if (idx === currentBeat) pip.classList.add('active');
                         else pip.classList.remove('active');
                     });
@@ -4218,9 +4663,258 @@
             }
         }
 
+
+        function _createDrawerPatchIn(drawer) {
+            const patchIn = document.createElement('div');
+            patchIn.className = `patch-point mod-in`;
+            patchIn.id = `in_${drawer.id}`;
+            patchIn.title = "Modulate this drawer with another";
+            patchIn.style.borderColor = 'var(--accent-cyan)';
+            if (state.drawers.some(d => d.connection === drawer.id)) patchIn.classList.add('active');
+            return patchIn;
+        }
+
+        function _createDrawerModeBtn(drawer) {
+            const modeBtn = document.createElement('button');
+            modeBtn.textContent = drawer.mode === 'pad' ? 'XY' : 'CV';
+            modeBtn.style.padding = '0 6px'; modeBtn.style.fontSize = '0.55rem';
+            modeBtn.onclick = () => { drawer.mode = drawer.mode === 'pad' ? 'curve' : 'pad'; renderDrawers(); };
+            return modeBtn;
+        }
+
+        function _createDrawerTitle(index) {
+            const titleSpan = document.createElement('span');
+            titleSpan.textContent = `DRAWER ${index + 1}`;
+            titleSpan.style.flexShrink = '0';
+            return titleSpan;
+        }
+
+        function _createDrawerTargetSelect(drawer) {
+            const select = document.createElement('select');
+            select.style.fontSize = '0.6rem';
+            select.style.padding = '2px';
+            select.style.marginRight = '2px';
+            const targets = [
+                { val: 'filter', label: 'Filter Cutoff' },
+                { val: 'res', label: 'Filter Q/Res' },
+                { val: 'volume', label: 'Volume Mod' },
+                { val: 'pan', label: 'Panning' },
+                { val: 'decay', label: 'ADSR: Decay' },
+                { val: 'adsr_time', label: 'ADSR: A/R' },
+                { val: 'time', label: 'FX Time/Rate' },
+                { val: 'drive', label: 'FX Drive/Depth' },
+                { val: 'mix', label: 'FX Mix' }
+            ];
+            targets.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t.val; opt.textContent = t.label;
+                if (drawer.modTarget === t.val) opt.selected = true;
+                select.appendChild(opt);
+            });
+            select.onchange = (e) => {
+                drawer.modTarget = e.target.value;
+                if (drawer.modTarget === 'pan') drawer.mode = 'pad';
+                else if (drawer.modTarget === 'filter' || drawer.modTarget === 'volume') drawer.mode = 'curve';
+                renderDrawers();
+            };
+            return select;
+        }
+
+        function _createDrawerWaveSelect(drawer) {
+            const waveSelect = document.createElement('select');
+            waveSelect.style.cssText = 'font-size:0.55rem; background:transparent; border:1px solid var(--glass-border); color:var(--text-dim); margin-left:8px;';
+            ['none', 'sine', 'saw', 'tri', 'rect'].forEach(w => {
+                const opt = document.createElement('option'); opt.value = w; opt.textContent = w.toUpperCase();
+                if (drawer.waveType === w) opt.selected = true;
+                waveSelect.appendChild(opt);
+            });
+            waveSelect.onchange = (e) => {
+                drawer.waveType = e.target.value;
+                generateWaveformPoints(drawer);
+                const canvas = document.getElementById(`canvas_${drawer.id}`);
+                if (canvas) drawDrawer(canvas, drawer);
+            };
+            return waveSelect;
+        }
+
+        function _createDrawerSyncBtn(drawer) {
+            const syncBtn = document.createElement('button');
+            syncBtn.textContent = drawer.sync ? 'SYNC' : 'FREE';
+            syncBtn.style.cssText = 'font-size:0.5rem; padding:1px 4px; margin-left:8px; background: ' + (drawer.sync ? 'var(--accent-cyan)' : 'var(--surface)') + '; color: ' + (drawer.sync ? '#000' : 'var(--text-dim)') + '; border: 1px solid var(--glass-border); border-radius: 3px; cursor: pointer;';
+            syncBtn.onclick = () => {
+                drawer.sync = !drawer.sync;
+                if (!drawer.sync) { if (drawer.waveRate > 50) drawer.waveRate = 5; } else { drawer.waveRate = Math.floor(drawer.waveRate) || 1; }
+                generateWaveformPoints(drawer);
+                renderDrawers();
+            };
+            return syncBtn;
+        }
+
+        function _createDrawerRateWrap(drawer) {
+            const rateWrap = document.createElement('div');
+            rateWrap.style.cssText = 'display:flex; align-items:center; gap:4px; margin-left:8px;';
+            const rateLabel = drawer.sync ? 'RATE' : 'Hz';
+            const rateMin = drawer.sync ? 0.25 : 0.1;
+            const rateMax = drawer.sync ? 16 : 20;
+            const rateStep = drawer.sync ? 0.25 : 0.1;
+            rateWrap.innerHTML = `<span style="font-size:0.5rem; color:var(--text-dim)">${rateLabel}</span>
+                                  <input type="range" min="${rateMin}" max="${rateMax}" step="${rateStep}" value="${drawer.waveRate}" style="width:40px; height:3px;">
+                                  <span style="font-size:0.5rem; color:var(--accent-yellow); min-width:15px; text-align:left;">${drawer.waveRate}</span>`;
+            rateWrap.querySelector('input').oninput = (e) => {
+                drawer.waveRate = parseFloat(e.target.value);
+                rateWrap.querySelector('span:last-child').textContent = drawer.waveRate;
+                if (drawer.sync && drawer.waveType !== 'none') {
+                    generateWaveformPoints(drawer);
+                    const canvas = document.getElementById(`canvas_${drawer.id}`);
+                    if (canvas) drawDrawer(canvas, drawer);
+                }
+            };
+            return rateWrap;
+        }
+
+        function _createDrawerModSourceSelect(drawer) {
+            const modTargetSelect = document.createElement('select');
+            modTargetSelect.style.cssText = 'font-size:0.55rem; margin-left:4px; background:transparent; border:1px solid var(--accent-cyan); color:var(--accent-cyan);';
+            [{ v: 'depth', l: '×D' }, { v: 'offset', l: '+S' }].forEach(t => {
+                const opt = document.createElement('option'); opt.value = t.v; opt.textContent = t.l;
+                if (drawer.modSourceTarget === t.v) opt.selected = true;
+                modTargetSelect.appendChild(opt);
+            });
+            modTargetSelect.onchange = (e) => { drawer.modSourceTarget = e.target.value; };
+            return modTargetSelect;
+        }
+
+        function _createDrawerRandBtn(drawer) {
+            const randBtn = document.createElement('button');
+            randBtn.textContent = '🎲';
+            randBtn.style.cssText = 'padding:0 4px; background:transparent; border:none; color:var(--text-dim); cursor:pointer; margin-left:auto;';
+            randBtn.onclick = () => {
+                const canvas = document.getElementById(`canvas_${drawer.id}`);
+                if (canvas) {
+                    drawer.waveType = ['sine', 'saw', 'tri', 'rect'][Math.floor(Math.random() * 4)];
+                    drawer.waveRate = 1 + Math.floor(Math.random() * 8);
+                    generateWaveformPoints(drawer);
+                    drawDrawer(canvas, drawer);
+                }
+            };
+            return randBtn;
+        }
+
+        function _createDrawerMinBtn(drawer) {
+            const minBtn = document.createElement('button');
+            minBtn.innerHTML = drawer.minimized ? '&#9634;' : '&#9552;'; // Square or double-dash icon
+            minBtn.title = drawer.minimized ? "Expand" : "Minimize";
+            minBtn.style.cssText = 'padding:0 6px; background:transparent; border:none; color:var(--text-main); cursor:pointer; font-size: 0.8rem; opacity: 0.6;';
+            minBtn.onmouseover = () => minBtn.style.opacity = '1';
+            minBtn.onmouseout = () => minBtn.style.opacity = '0.6';
+            minBtn.onclick = (e) => { e.stopPropagation(); drawer.minimized = !drawer.minimized; renderDrawers(); };
+            return minBtn;
+        }
+
+        function _createDrawerDelBtn(drawer, index) {
+            const delBtn = document.createElement('button');
+            delBtn.innerHTML = '&times;';
+            delBtn.title = "Delete Modulator";
+            delBtn.style.cssText = 'padding:0 6px; background:transparent; border:none; color:var(--accent-pink); cursor:pointer; font-size: 1rem; opacity: 0.4;';
+            delBtn.onmouseover = () => delBtn.style.opacity = '1';
+            delBtn.onmouseout = () => delBtn.style.opacity = '0.4';
+            delBtn.onclick = (e) => {
+                e.stopPropagation();
+                if (state.drawers.length > 1) {
+                    state.drawers.splice(index, 1);
+                    renderDrawers();
+                }
+            };
+            return delBtn;
+        }
+
+        function _createDrawerPatchOut(drawer) {
+            const patchOut = document.createElement('div');
+            patchOut.className = `patch-point mod-out ${drawer.connection ? 'active' : ''}`;
+            patchOut.id = `out_${drawer.id}`;
+            patchOut.onmousedown = (e) => {
+                isPatching = true; patchingDrawerId = drawer.id;
+                document.getElementById('active-cable').style.display = 'block';
+            };
+            return patchOut;
+        }
+
+        function _createDrawerContent(drawer) {
+            const content = document.createElement('div');
+            content.className = 'panel-content';
+            const canvas = document.createElement('canvas');
+            canvas.className = 'drawer-canvas';
+            canvas.id = `canvas_${drawer.id}`;
+            content.appendChild(canvas);
+            const hint = document.createElement('div');
+            hint.style.cssText = 'padding:4px 8px; font-size:0.6rem; color:#444;';
+            hint.innerHTML = `<strong style="color:var(--text-dim)">${drawer.sync ? '1 BAR' : 'FREE'}</strong> | PAINT CURVE TO MODIFY`;
+            return { content, canvas, hint };
+        }
+
+        function _setupDrawerCanvasInteractions(drawer, canvas) {
+            canvas.onmousedown = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const pt = { x: (e.clientX - rect.left) / rect.width, y: (e.clientY - rect.top) / rect.height };
+                activeDrawingDrawerId = drawer.id;
+                if (drawer.mode === 'pad') {
+                    drawer.padPos = pt;
+                    updateManualMod(drawer);
+                } else {
+                    if (drawer.points.length === 0) {
+                        for (let i = 0; i <= 1; i += 0.01) drawer.points.push({ x: i, y: 0.5 });
+                    }
+                    drawer.points.forEach(p => { if (Math.abs(p.x - pt.x) < 0.05) p.y = pt.y; });
+                }
+                drawDrawer(canvas, drawer);
+            };
+            canvas.onmousemove = (e) => {
+                if (activeDrawingDrawerId !== drawer.id) return;
+                const rect = canvas.getBoundingClientRect();
+                const pt = { x: (e.clientX - rect.left) / rect.width, y: (e.clientY - rect.top) / rect.height };
+                if (drawer.mode === 'pad') {
+                    drawer.padPos = pt;
+                    updateManualMod(drawer);
+                } else {
+                    drawer.points.forEach(p => { if (Math.abs(p.x - pt.x) < 0.05) p.y = pt.y; });
+                }
+                drawDrawer(canvas, drawer);
+            };
+            setTimeout(() => {
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+                if (drawer.mode === 'curve' && drawer.points.length === 0) {
+                    generateWaveformPoints(drawer);
+                    if (drawer.points.length === 0) {
+                        for (let i = 0; i <= 1; i += 0.05) drawer.points.push({ x: i, y: 1 - i });
+                    }
+                } else if (drawer.mode === 'pad' && !drawer.padPos) {
+                    drawer.padPos = { x: 0.5, y: 0.5 };
+                }
+                drawDrawer(canvas, drawer);
+                updateFixedCables();
+            }, 0);
+        }
+
+        function _createDrawerAddBtn(container) {
+            const addBtn = document.createElement('button');
+            addBtn.innerHTML = '<span>+</span> ADD MODULATOR';
+            addBtn.className = 'add-drawer-btn';
+            addBtn.style.cssText = 'width: 100%; padding: 12px; margin-top: 8px; background: rgba(0, 242, 255, 0.05); color: var(--accent-cyan); border: 1px dashed rgba(0, 242, 255, 0.3); border-radius: 6px; cursor: pointer; font-size: 0.7rem; font-weight: bold; transition: all 0.2s;';
+            addBtn.onmouseover = () => { addBtn.style.background = 'rgba(0, 242, 255, 0.1)'; addBtn.style.borderColor = 'var(--accent-cyan)'; };
+            addBtn.onmouseout = () => { addBtn.style.background = 'rgba(0, 242, 255, 0.05)'; addBtn.style.borderColor = 'rgba(0, 242, 255, 0.3)'; };
+            addBtn.onclick = () => {
+                state.drawers.push(createDrawer());
+                renderDrawers();
+                // Scroll to bottom
+                container.scrollTop = container.scrollHeight;
+            };
+            return addBtn;
+        }
+
         function renderDrawers() {
             const container = document.getElementById('drawers-container');
-            container.innerHTML = '';
+            container.textContent = '';
             state.drawers.forEach((drawer, index) => {
                 const template = instrumentTypes[drawer.connection ? state.lookup.tracks.get(drawer.connection)?.typeId : 'synthwave'];
                 const panel = document.createElement('div');
@@ -4229,12 +4923,7 @@
                 const header = document.createElement('div');
                 header.className = 'panel-header';
 
-                const patchIn = document.createElement('div');
-                patchIn.className = `patch-point mod-in`;
-                patchIn.id = `in_${drawer.id}`;
-                patchIn.title = "Modulate this drawer with another";
-                patchIn.style.borderColor = 'var(--accent-cyan)';
-                if (state.drawers.some(d => d.connection === drawer.id)) patchIn.classList.add('active');
+                const patchIn = _createDrawerPatchIn(drawer);
                 header.appendChild(patchIn);
                 const modeBtn = document.createElement('button');
                 modeBtn.textContent = drawer.mode === 'pad' ? 'XY' : 'CV';
@@ -4350,22 +5039,32 @@
                 delBtn.onclick = (e) => { 
                     e.stopPropagation();
                     if (state.drawers.length > 1) {
-                        state.drawers.splice(index, 1);
+                        state.drawers.splice(index, 1); refreshLookupMap();
                         renderDrawers();
                     }
                 };
 
-                const patchOut = document.createElement('div');
-                patchOut.className = `patch-point mod-out ${drawer.connection ? 'active' : ''}`;
-                patchOut.id = `out_${drawer.id}`;
-                patchOut.onmousedown = (e) => {
-                    isPatching = true; patchingDrawerId = drawer.id;
-                    document.getElementById('active-cable').style.display = 'block';
-                };
+                const modeBtn = _createDrawerModeBtn(drawer);
+                const titleSpan = _createDrawerTitle(index);
+                const select = _createDrawerTargetSelect(drawer);
+                const waveSelect = _createDrawerWaveSelect(drawer);
+                const syncBtn = _createDrawerSyncBtn(drawer);
+                const rateWrap = _createDrawerRateWrap(drawer);
 
                 const controlGroup = document.createElement('div');
                 controlGroup.style.cssText = 'display:flex; align-items:center; gap:6px; flex-grow:1; justify-content:center; overflow:hidden;';
-                controlGroup.append(modeBtn, titleSpan, select, waveSelect, syncBtn, rateWrap, randBtn, minBtn, delBtn);
+                controlGroup.append(modeBtn, titleSpan, select, waveSelect, syncBtn, rateWrap);
+
+                if (drawer.modSource) {
+                    controlGroup.appendChild(_createDrawerModSourceSelect(drawer));
+                }
+
+                const randBtn = _createDrawerRandBtn(drawer);
+                const minBtn = _createDrawerMinBtn(drawer);
+                const delBtn = _createDrawerDelBtn(drawer, index);
+                const patchOut = _createDrawerPatchOut(drawer);
+
+                controlGroup.append(randBtn, minBtn, delBtn);
 
                 patchOut.style.flexShrink = '0';
                 header.append(controlGroup, patchOut);
@@ -4373,15 +5072,7 @@
                 header.style.cursor = 'pointer';
                 header.ondblclick = () => { drawer.minimized = !drawer.minimized; renderDrawers(); };
 
-                const content = document.createElement('div');
-                content.className = 'panel-content';
-                const canvas = document.createElement('canvas');
-                canvas.className = 'drawer-canvas';
-                canvas.id = `canvas_${drawer.id}`;
-                content.appendChild(canvas);
-                const hint = document.createElement('div');
-                hint.style.cssText = 'padding:4px 8px; font-size:0.6rem; color:#444;';
-                hint.innerHTML = `<strong style="color:var(--text-dim)">${drawer.sync ? '1 BAR' : 'FREE'}</strong> | PAINT CURVE TO MODIFY`;
+                const { content, canvas, hint } = _createDrawerContent(drawer);
                 if (!drawer.minimized) {
                     panel.append(header, content, hint);
                 } else {
@@ -4390,47 +5081,7 @@
                 }
                 container.appendChild(panel);
                 if (!drawer.minimized) {
-                    canvas.onmousedown = (e) => {
-                        const rect = canvas.getBoundingClientRect();
-                        const pt = { x: (e.clientX - rect.left) / rect.width, y: (e.clientY - rect.top) / rect.height };
-                        activeDrawingDrawerId = drawer.id;
-                        if (drawer.mode === 'pad') {
-                            drawer.padPos = pt;
-                            updateManualMod(drawer);
-                        } else {
-                            if (drawer.points.length === 0) {
-                                for (let i = 0; i <= 1; i += 0.01) drawer.points.push({ x: i, y: 0.5 });
-                            }
-                            drawer.points.forEach(p => { if (Math.abs(p.x - pt.x) < 0.05) p.y = pt.y; });
-                        }
-                        drawDrawer(canvas, drawer);
-                    };
-                    canvas.onmousemove = (e) => {
-                        if (activeDrawingDrawerId !== drawer.id) return;
-                        const rect = canvas.getBoundingClientRect();
-                        const pt = { x: (e.clientX - rect.left) / rect.width, y: (e.clientY - rect.top) / rect.height };
-                        if (drawer.mode === 'pad') {
-                            drawer.padPos = pt;
-                            updateManualMod(drawer);
-                        } else {
-                            drawer.points.forEach(p => { if (Math.abs(p.x - pt.x) < 0.05) p.y = pt.y; });
-                        }
-                        drawDrawer(canvas, drawer);
-                    };
-                    setTimeout(() => {
-                        canvas.width = canvas.offsetWidth;
-                        canvas.height = canvas.offsetHeight;
-                        if (drawer.mode === 'curve' && drawer.points.length === 0) {
-                            generateWaveformPoints(drawer);
-                            if (drawer.points.length === 0) {
-                                for (let i = 0; i <= 1; i += 0.05) drawer.points.push({ x: i, y: 1 - i });
-                            }
-                        } else if (drawer.mode === 'pad' && !drawer.padPos) {
-                            drawer.padPos = { x: 0.5, y: 0.5 };
-                        }
-                        drawDrawer(canvas, drawer);
-                        updateFixedCables();
-                    }, 0);
+                    _setupDrawerCanvasInteractions(drawer, canvas);
                 } else {
                     setTimeout(updateFixedCables, 0);
                 }
@@ -4446,11 +5097,15 @@
             addBtn.onclick = () => {
                 state.drawers.push(createDrawer());
                 refreshLookupMap();
+                state.drawers.push(createDrawer()); refreshLookupMap();
                 renderDrawers();
                 // Scroll to bottom
                 container.scrollTop = container.scrollHeight;
             };
+            const addBtn = _createDrawerAddBtn(container);
             container.appendChild(addBtn);
+
+            updateCableElementCache();
         }
 
         function updateManualMod(drawer) {
@@ -4473,13 +5128,6 @@
         }
 
         window.addEventListener('mouseup', () => { activeDrawingDrawerId = null; });
-
-        function resizeCanvas() {
-            oscCanvas.width = oscCanvas.offsetWidth; oscCanvas.height = oscCanvas.offsetHeight;
-            specCanvas.width = specCanvas.offsetWidth; specCanvas.height = specCanvas.offsetHeight;
-            renderDrawers();
-        }
-        window.onload = () => { resizeCanvas(); renderTracks(); renderDrawers(); renderBeatCounter(); renderFxPanels(); };
 
         function drawVisuals() {
             requestAnimationFrame(drawVisuals);
@@ -4531,6 +5179,129 @@
             });
         }
         drawVisuals();
+
+        // --- Session Management (File I/O) ---
+        function saveSession() {
+            const sessionData = {
+                version: "1.0",
+                bpm: state.bpm,
+                timeSignature: state.timeSignature,
+                globalKey: state.globalKey,
+                globalScale: state.globalScale,
+                tracks: state.tracks.map(t => ({
+                    typeId: t.typeId,
+                    volume: t.volume,
+                    muted: t.muted,
+                    solo: t.solo,
+                    subdiv: t.subdiv,
+                    octaveOffset: t.octaveOffset,
+                    loopMultiplier: t.loopMultiplier,
+                    grid: t.grid,
+                    adsr: t.adsr,
+                    sidechainEnabled: t.sidechainEnabled,
+                    xy: t.xy
+                })),
+                fxUnits: state.fxUnits.map(u => ({
+                    type: u.type,
+                    params: u.params
+                })),
+                scenes: state.scenes
+            };
+
+            const blob = new Blob([JSON.stringify(sessionData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Vibleton_Session_${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function loadSession(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const data = JSON.parse(event.target.result);
+
+                    // Restore Global Settings
+                    if (data.bpm) {
+                        state.bpm = data.bpm;
+                        document.getElementById('bpm-input').value = state.bpm;
+                    }
+                    if (data.timeSignature) state.timeSignature = data.timeSignature;
+                    if (data.globalKey) {
+                        state.globalKey = data.globalKey;
+                        document.getElementById('key-input').value = state.globalKey;
+                    }
+                    if (data.globalScale) {
+                        state.globalScale = data.globalScale;
+                        document.getElementById('scale-input').value = state.globalScale;
+                    }
+
+                    // Restore Tracks
+                    if (data.tracks) {
+                        // Clear existing tracks
+                        state.tracks.forEach(t => t.cleanup && t.cleanup());
+                        state.tracks = [];
+
+                        data.tracks.forEach(trackData => {
+                            const newTrack = createTrack(trackData.typeId);
+                            newTrack.volume = trackData.volume;
+                            newTrack.muted = trackData.muted;
+                            newTrack.solo = trackData.solo;
+                            newTrack.subdiv = trackData.subdiv;
+                            newTrack.octaveOffset = trackData.octaveOffset;
+                            newTrack.loopMultiplier = trackData.loopMultiplier || 1;
+                            newTrack.grid = trackData.grid;
+                            if (trackData.adsr) newTrack.adsr = trackData.adsr;
+                            newTrack.sidechainEnabled = trackData.sidechainEnabled;
+                            newTrack.xy = trackData.xy || { x: 0.8, y: 0.2 };
+
+                            newTrack.gainNode.gain.value = newTrack.muted ? 0 : newTrack.volume;
+                            state.tracks.push(newTrack);
+                        });
+                    }
+
+                    // Restore FX
+                    if (data.fxUnits) {
+                        data.fxUnits.forEach((fxData, i) => {
+                            if (i < state.fxUnits.length) {
+                                const u = state.fxUnits[i];
+                                u.type = fxData.type;
+                                setupFxNodes(u);
+                                u.params = fxData.params;
+                                updateFxParams(u, null);
+                            }
+                        });
+                    }
+
+                    // Restore Scenes
+                    if (data.scenes) {
+                        state.scenes = data.scenes;
+                    }
+
+                    // Refresh UI
+                    changeScale();
+                    renderTracks();
+                    renderFxPanels();
+                    renderScenes();
+                    renderBeatCounter();
+
+                    console.log("Session loaded successfully");
+                } catch (err) {
+                    console.error("Error loading session:", err);
+                    alert("Failed to load session file.");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        document.getElementById('save-session-btn').onclick = saveSession;
+        document.getElementById('load-session-btn').onclick = () => document.getElementById('session-load-input').click();
+        document.getElementById('session-load-input').onchange = loadSession;
     </script>
 </body>
 
