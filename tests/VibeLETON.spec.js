@@ -1,12 +1,12 @@
 const { test, expect } = require('@playwright/test');
 const path = require('path');
 
-test.describe('VibeLETON App Tests', () => {
+test.describe('Veggie Loops App Tests', () => {
     let fileUrl;
 
     test.beforeAll(() => {
-        // Construct the absolute file URL for VibeLETON.html
-        const filePath = path.resolve(__dirname, '../VibeLETON.html');
+        // Construct the absolute file URL for VeggieLoops.html
+        const filePath = path.resolve(__dirname, '../VeggieLoops.html');
         fileUrl = `file://${filePath}`;
     });
 

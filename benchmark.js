@@ -10,7 +10,7 @@ const path = require('path');
   await page.route('**/*fonts.googleapis.com*', route => route.abort());
   await page.route('**/*fonts.gstatic.com*', route => route.abort());
 
-  const filePath = path.resolve('VibeLETON.html');
+  const filePath = path.resolve('VeggieLoops.html');
   await page.goto(`file://${filePath}`, { waitUntil: 'commit' });
 
   // Wait a bit for initialization
