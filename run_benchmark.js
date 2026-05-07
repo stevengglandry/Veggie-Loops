@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 (async () => {
-  let html = fs.readFileSync('VibeLETON.html', 'utf8');
+  let html = fs.readFileSync('VeggieLoops.html', 'utf8');
 
   const benchmarkScript = `
   <script>
@@ -46,7 +46,7 @@ const fs = require('fs');
   `;
 
   html = html.replace('</body>', benchmarkScript + '</body>');
-  fs.writeFileSync('VibeLETON_benchmark.html', html);
+  fs.writeFileSync('VeggieLoops_benchmark.html', html);
 
   const browser = await chromium.launch({
     args: ['--autoplay-policy=no-user-gesture-required']
@@ -56,7 +56,7 @@ const fs = require('fs');
   page.on('pageerror', err => console.log('PAGE ERROR:', err.message));
   page.on('console', msg => console.log('BROWSER LOG:', msg.text()));
 
-  await page.goto('file://' + path.resolve('VibeLETON_benchmark.html'));
+  await page.goto('file://' + path.resolve('VeggieLoops_benchmark.html'));
 
   try {
     await page.waitForSelector('#benchmark-result', { timeout: 20000 });
@@ -67,5 +67,5 @@ const fs = require('fs');
   }
 
   await browser.close();
-  fs.unlinkSync('VibeLETON_benchmark.html');
+  fs.unlinkSync('VeggieLoops_benchmark.html');
 })();
