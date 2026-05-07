@@ -1662,6 +1662,7 @@
 
         // --- UI Rendering ---
         const tracksContainer = document.getElementById('tracks-container');
+        const selectionBox = document.getElementById('selection-box');
         let isDraggingPip = false; let dragDrawMode = true;
 
         function selectTrack(idx) {
@@ -1686,13 +1687,12 @@
                     state.selection.startX = e.clientX;
                     state.selection.startY = e.clientY;
                     state.selection.notes = []; // Clear selection
-                    const box = document.getElementById('selection-box');
-                    if (box) {
-                        box.style.display = 'block';
-                        box.style.left = e.clientX + 'px';
-                        box.style.top = e.clientY + 'px';
-                        box.style.width = '0px';
-                        box.style.height = '0px';
+                    if (selectionBox) {
+                        selectionBox.style.display = 'block';
+                        selectionBox.style.left = e.clientX + 'px';
+                        selectionBox.style.top = e.clientY + 'px';
+                        selectionBox.style.width = '0px';
+                        selectionBox.style.height = '0px';
                     }
                 }
             }
@@ -1706,16 +1706,15 @@
 
         window.addEventListener('mousemove', (e) => {
             if (state.selection.active) {
-                const box = document.getElementById('selection-box');
-                if (box) {
+                if (selectionBox) {
                     const x = Math.min(e.clientX, state.selection.startX);
                     const y = Math.min(e.clientY, state.selection.startY);
                     const w = Math.abs(e.clientX - state.selection.startX);
                     const h = Math.abs(e.clientY - state.selection.startY);
-                    box.style.left = x + 'px';
-                    box.style.top = y + 'px';
-                    box.style.width = w + 'px';
-                    box.style.height = h + 'px';
+                    selectionBox.style.left = x + 'px';
+                    selectionBox.style.top = y + 'px';
+                    selectionBox.style.width = w + 'px';
+                    selectionBox.style.height = h + 'px';
 
                     // Logic to find notes inside rect will happen on mouseup or here
                 }
@@ -1724,9 +1723,8 @@
 
         window.addEventListener('mouseup', (e) => {
             if (state.selection.active) {
-                const box = document.getElementById('selection-box');
-                if (box) {
-                    const rect = box.getBoundingClientRect();
+                if (selectionBox) {
+                    const rect = selectionBox.getBoundingClientRect();
                     const affectedTracks = new Set();
                     // Find all .step-inner elements inside this rect
                     document.querySelectorAll('.step-inner').forEach(inner => {
@@ -1743,7 +1741,7 @@
                             affectedTracks.add(trackId);
                         }
                     });
-                    box.style.display = 'none';
+                    selectionBox.style.display = 'none';
                     affectedTracks.forEach(tId => {
                         const t = state.lookup.tracks.get(tId);
                         if (t) updateTrackGrid(t);
