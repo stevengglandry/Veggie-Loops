@@ -22,9 +22,9 @@ test.describe('Veggie Loops App Tests', () => {
 
     test('should render basic UI components', async ({ page }) => {
         // Verify header elements
-        await expect(page.locator('.logo')).toHaveText('Vibleton');
+        await expect(page.locator('.logo')).toHaveText('Veggie Loops');
         await expect(page.locator('#play-btn')).toBeVisible();
-        await expect(page.locator('#record-btn')).toBeVisible();
+        await expect(page.locator('#rec-btn')).toBeVisible();
 
         // Verify workspace elements
         await expect(page.locator('#tracks-container')).toBeVisible();
