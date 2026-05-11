@@ -22,7 +22,7 @@
             --accent-pink: #ff007f;
             --accent-yellow: #ffea00;
             --text-main: #e0e0e6;
-            --text-dim: #60606a;
+            --text-dim: #828793;
             --font-main: 'Inter', sans-serif;
             --font-mono: 'JetBrains Mono', monospace;
             --radius-md: 6px;
@@ -194,7 +194,7 @@
 
         .label {
             font-size: 0.62rem;
-            color: var(--text-dim);
+            color: #8d92a0;
             text-transform: uppercase;
             font-weight: 600;
             margin-right: 3px;
@@ -429,6 +429,21 @@
             position: relative;
         }
 
+        .grid-row.keyboard-active {
+            background: linear-gradient(90deg, rgba(0, 242, 255, 0.16), rgba(255, 255, 255, 0.035));
+            box-shadow: inset 2px 0 0 var(--accent-cyan), inset 0 0 12px rgba(0, 242, 255, 0.18);
+        }
+
+        .grid-row.keyboard-active .row-label,
+        .grid-row.keyboard-active .sampler-row-label {
+            color: var(--accent-cyan);
+            text-shadow: 0 0 8px rgba(0, 242, 255, 0.8);
+        }
+
+        .grid-row.keyboard-active .step {
+            background: rgba(0, 242, 255, 0.08);
+        }
+
         .track-resizer {
             height: 12px;
             background: rgba(255, 255, 255, 0.04);
@@ -489,6 +504,26 @@
         }
 
         .row-label:hover {
+            color: white;
+        }
+
+        .sampler-row-label {
+            font-family: var(--font-mono);
+            font-size: 0.5rem;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: color 0.1s;
+            padding-right: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .sampler-row-label:hover {
             color: white;
         }
 
@@ -632,7 +667,7 @@
             font-family: var(--font-mono);
             font-size: 0.5rem;
             font-weight: 800;
-            color: #7f8490;
+            color: #989fac;
             letter-spacing: 0.1em;
         }
 
@@ -644,16 +679,32 @@
         }
 
         .sampler-keys {
-            display: flex;
-            height: 31px;
+            display: grid;
+            grid-template-columns: repeat(21, minmax(0, 1fr));
+            grid-template-rows: repeat(2, minmax(0, 1fr));
+            height: 44px;
             width: 100%;
-            padding: 2px;
-            gap: 1px;
+            padding: 3px;
+            gap: 3px;
             border: 1px solid rgba(255, 255, 255, 0.14);
             border-radius: 5px;
             overflow: hidden;
             background: #060608;
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 6px 14px rgba(0, 0, 0, 0.22);
+        }
+
+        .track[data-type-id="drumSet"] .sampler-keys {
+            height: 58px;
+        }
+
+        .track[data-type-id="drumSet"] .sampler-canvas {
+            height: 82px;
+        }
+
+        .track[data-type-id="drumSet"] .sampler-preview-pane {
+            flex: 0 0 clamp(300px, 24vw, 360px);
+            width: clamp(300px, 24vw, 360px);
+            max-width: none;
         }
 
         .sampler-preview-pane {
@@ -671,27 +722,26 @@
             transition: transform 0.05s ease, filter 0.08s ease, border-color 0.08s ease, box-shadow 0.08s ease;
         }
 
-        .mpc-key.white {
-            flex: 1;
+        .mpc-key.white,
+        .mpc-key.black {
+            width: 100%;
             height: 100%;
             z-index: 1;
-            border: 1px solid rgba(255, 255, 255, 0.22);
-            border-bottom-color: rgba(0, 0, 0, 0.65);
-            border-radius: 2px 2px 4px 4px;
-            background: linear-gradient(180deg, #dfe2e7 0%, #c1c5cd 70%, #8b909a 100%);
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78), inset 0 -5px 10px rgba(0, 0, 0, 0.2);
+            margin: 0;
+            border-radius: 4px;
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.14),
+                0 2px 0 rgba(0, 0, 0, 0.75);
+        }
+
+        .mpc-key.white {
+            border: 1px solid rgba(255, 255, 255, 0.34);
+            background: linear-gradient(180deg, #f5f6f8 0%, #d8dbe0 100%);
         }
 
         .mpc-key.black {
-            flex: 0.68;
-            height: 66%;
-            z-index: 2;
-            margin: 0 -2.4%;
-            border: 1px solid rgba(0, 242, 255, 0.18);
-            border-top: none;
-            border-radius: 0 0 3px 3px;
-            background: linear-gradient(180deg, #20212a 0%, #0b0b10 68%, #030306 100%);
-            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(0, 242, 255, 0.2);
+            background: linear-gradient(180deg, #101218 0%, #030407 100%);
         }
 
         .mpc-key:hover {
@@ -753,7 +803,22 @@
         .xy-mod-inputs {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 7px;
+            justify-content: center;
+        }
+
+        .xy-mod-row {
+            display: grid;
+            grid-template-columns: 12px 8px;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.5rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .xy-mod-row .patch-point {
+            margin: 0;
         }
 
         .drawer-canvas {
@@ -851,6 +916,26 @@
         .keyboard-hint {
             color: var(--accent-yellow);
             opacity: 0.8;
+        }
+
+        .computer-key-label {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translateX(-50%);
+            transform: translate(-50%, -50%);
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
+            font-weight: 800;
+            line-height: 1;
+            color: #050507;
+            pointer-events: none;
+            text-transform: uppercase;
+        }
+
+        .mpc-key.black .computer-key-label {
+            color: var(--text-main);
+            text-shadow: 0 1px 1px rgba(0, 0, 0, 0.9);
         }
 
         /* --- ADSR Knobs --- */
@@ -972,6 +1057,169 @@
             transform-origin: center 10.5px;
             pointer-events: none;
             z-index: 5;
+        }
+
+        .track[data-type-id="drumSet"] .label,
+        .track[data-type-id="drumSet"] .knob-label-adsr {
+            color: #a1a7b3;
+        }
+
+        .track[data-type="synth"] .track-header {
+            min-height: 112px;
+            padding: 5px 8px 7px;
+            gap: 6px;
+        }
+
+        .melodic-control-row {
+            min-height: 22px;
+        }
+
+        .melodic-module-row {
+            align-items: stretch;
+            gap: 10px;
+            min-height: 78px;
+        }
+
+        .melodic-module-divider {
+            width: 1px;
+            flex: 0 0 1px;
+            align-self: stretch;
+            min-height: 70px;
+            background: linear-gradient(180deg, transparent 0%, rgba(180, 184, 196, 0.22) 12%, rgba(180, 184, 196, 0.22) 88%, transparent 100%);
+        }
+
+        .track[data-type="synth"] .xy-group {
+            margin-left: 0;
+            align-self: stretch;
+        }
+
+        .track[data-type="synth"] .xy-container {
+            width: 150px;
+            height: 76px;
+            background: linear-gradient(180deg, #06070a 0%, #020305 100%);
+        }
+
+        .track[data-type="synth"] .xy-mod-inputs {
+            gap: 10px;
+        }
+
+        .track[data-type="synth"] .adsr-group {
+            margin-left: 0;
+            align-self: stretch;
+            gap: 8px;
+        }
+
+        .track[data-type="synth"] .adsr-display {
+            width: 112px;
+            height: 56px;
+            background: linear-gradient(180deg, #06070a 0%, #020305 100%);
+        }
+
+        .track[data-type="synth"] .adsr-knobs {
+            gap: 7px;
+        }
+
+        .melodic-perf-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            align-self: stretch;
+            justify-content: center;
+            min-width: 128px;
+        }
+
+        .track[data-type="synth"] .random-controls {
+            align-self: stretch;
+            justify-content: center;
+        }
+
+        .track[data-type-id="drumSet"] .xy-container {
+            height: 64px;
+        }
+
+        .track[data-type-id="drumSet"] .xy-mod-inputs {
+            gap: 9px;
+            padding-top: 1px;
+        }
+
+        .drum-adsr-group {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 6px;
+            margin-left: 0;
+        }
+
+        .drum-adsr-graph-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .drum-adsr-mod-inputs {
+            gap: 11px;
+            min-height: 58px;
+            justify-content: center;
+        }
+
+        .drum-adsr-group .adsr-display {
+            width: 140px;
+            height: 58px;
+            border-color: rgba(255, 255, 255, 0.2);
+            background: linear-gradient(180deg, #06070a 0%, #020305 100%);
+        }
+
+        .drum-adsr-group .adsr-knobs {
+            width: 140px;
+            justify-content: space-between;
+            gap: 5px;
+            padding: 0;
+            box-sizing: border-box;
+            margin-left: 30px;
+        }
+
+        .drum-adsr-group .knob-wrap {
+            min-width: 29px;
+        }
+
+        .drum-midi-box {
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 8px 18px rgba(0, 0, 0, 0.22);
+        }
+
+        .drum-midi-box .patch-point {
+            width: 10px;
+            height: 10px;
+        }
+
+        .drum-module-divider {
+            width: 1px;
+            flex: 0 0 1px;
+            align-self: stretch;
+            min-height: 82px;
+            background: linear-gradient(180deg, transparent 0%, rgba(180, 184, 196, 0.24) 14%, rgba(180, 184, 196, 0.24) 86%, transparent 100%);
+        }
+
+        .minimized-port-strip {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 2px 7px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.025);
+        }
+
+        .minimized-port-wrap {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            font-family: var(--font-mono);
+            font-size: 0.48rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .minimized-port-strip .patch-point {
+            margin: 0;
         }
 
         .add-track-btn,
@@ -1508,6 +1756,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             mod_x: new Map(),
             mod_y: new Map(),
             mod_decay: new Map(),
+            mod_sustain: new Map(),
             mod_adsr: new Map(),
             audio_out: new Map(),
             audio_in: new Map(),
@@ -1522,6 +1771,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             window.cableElementCache.mod_x.clear();
             window.cableElementCache.mod_y.clear();
             window.cableElementCache.mod_decay.clear();
+            window.cableElementCache.mod_sustain.clear();
             window.cableElementCache.mod_adsr.clear();
             window.cableElementCache.audio_out.clear();
             window.cableElementCache.audio_in.clear();
@@ -1534,6 +1784,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             document.querySelectorAll('[id^="mod_x_"]').forEach(el => window.cableElementCache.mod_x.set(el.id, el));
             document.querySelectorAll('[id^="mod_y_"]').forEach(el => window.cableElementCache.mod_y.set(el.id, el));
             document.querySelectorAll('[id^="mod_decay_"]').forEach(el => window.cableElementCache.mod_decay.set(el.id, el));
+            document.querySelectorAll('[id^="mod_sustain_"]').forEach(el => window.cableElementCache.mod_sustain.set(el.id, el));
             document.querySelectorAll('[id^="mod_adsr_"]').forEach(el => window.cableElementCache.mod_adsr.set(el.id, el));
             document.querySelectorAll('[id^="audio_out_"]').forEach(el => window.cableElementCache.audio_out.set(el.id, el));
             document.querySelectorAll('[id^="audio_in_"]').forEach(el => window.cableElementCache.audio_in.set(el.id, el));
@@ -1584,25 +1835,161 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             return allNotes.reverse();
         }
 
+        function splitNoteLabel(noteName) {
+            const match = String(noteName || '').match(/^([A-G](?:#|b)?)(-?\d+)$/);
+            return match ? { pitch: match[1], octave: match[2] } : null;
+        }
+
+        function getPitchIndex(pitch) {
+            const flatToSharp = { Db: 'C#', Eb: 'D#', Gb: 'F#', Ab: 'G#', Bb: 'A#' };
+            return noteNames.indexOf(flatToSharp[pitch] || pitch);
+        }
+
+        function noteNameToAbsoluteSemitone(noteName) {
+            const parts = splitNoteLabel(noteName);
+            if (!parts) return null;
+            const pitchIdx = getPitchIndex(parts.pitch);
+            const octave = parseInt(parts.octave, 10);
+            if (pitchIdx < 0 || !Number.isFinite(octave)) return null;
+            return octave * 12 + pitchIdx;
+        }
+
+        function spellScalePitch(pitch) {
+            const scale = state?.globalScale || 'minor';
+            if (scale === 'chromatic') return pitch;
+            const rootPitch = state?.globalKey || 'C';
+            const intervals = scalesDef[scale] || scalesDef.minor;
+            const rootIdx = getPitchIndex(rootPitch);
+            const pitchIdx = getPitchIndex(pitch);
+            if (rootIdx < 0 || pitchIdx < 0) return pitch;
+
+            const rel = (pitchIdx - rootIdx + 12) % 12;
+            const degree = intervals.indexOf(rel);
+            if (degree < 0) return pitch;
+
+            const letters = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+            const naturalPitch = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+            const rootLetterIdx = letters.indexOf(rootPitch[0]);
+            if (rootLetterIdx < 0) return pitch;
+
+            const letter = letters[(rootLetterIdx + degree) % letters.length];
+            const naturalIdx = naturalPitch[letter];
+            const diff = (pitchIdx - naturalIdx + 12) % 12;
+            if (diff === 0) return letter;
+            if (diff === 1) return letter + '#';
+            if (diff === 11) return letter + 'b';
+            return pitch;
+        }
+
+        function formatPianoRollRowLabel(noteName) {
+            const parts = splitNoteLabel(noteName);
+            if (!parts) return noteName;
+            const spelledPitch = spellScalePitch(parts.pitch);
+            const rootIdx = getPitchIndex(state?.globalKey || 'C');
+            const pitchIdx = getPitchIndex(parts.pitch);
+            return pitchIdx === rootIdx ? spelledPitch + parts.octave : spelledPitch;
+        }
+
         const drumStyles = {
-            'Kick': ['Classic', '808 Deep', 'Snappy', 'Industrial'],
-            'Snare': ['Classic', '808 Snap', 'Acoustic', 'Lofi'],
-            'CHat': ['Classic', 'Metallic', 'Analog', 'Lofi'],
-            'OHat': ['Classic', 'Metallic', 'Analog', 'Lofi'],
-            'Crash': ['Classic', 'Resonant', 'Trashy'],
-            'Ride': ['Classic', 'Bell', 'Sizzle'],
-            'Clave': ['Classic', 'Woodblock', 'Electronic'],
-            'TomH': ['80s', 'Acoustic', 'Electronic'],
-            'TomL': ['80s', 'Acoustic', 'Electronic'],
-            'BongoH': ['Natural', 'Electronic'],
-            'BongoL': ['Natural', 'Electronic'],
-            'Shaker': ['Sand', 'Metal', 'Electronic'],
-            'Cowbell': ['Classic', '808', 'Distorted']
+            'Kick': ['Sampler', '808 Deep', 'Snappy', 'LoFi'],
+            'Snare': ['Sampler', '808 Snap', 'Acoustic', 'LoFi'],
+            'CHat': ['Sampler', 'Metallic', 'Analog', 'LoFi'],
+            'OHat': ['Sampler', 'Metallic', 'Analog', 'LoFi'],
+            'Rim': ['Sampler', 'Metallic', 'Analog', 'LoFi'],
+            'Clap': ['Sampler', 'Metallic', 'Analog', 'LoFi'],
+            'Crash': ['Sampler', 'Resonant', 'Trashy', 'LoFi'],
+            'Ride': ['Sampler', 'Bell', 'Sizzle', 'LoFi'],
+            'Splash': ['Sampler', '808', 'Metal', 'LoFi'],
+            'Clave': ['Classic', 'Woodblock', 'Electronic', 'Cowbell'],
+            'TomH': ['Sampler', '808 Deep', 'Acoustic', 'LoFi'],
+            'TomL': ['Sampler', '808 Deep', 'Acoustic', 'LoFi'],
+            'Shaker': ['Sampler', 'Sand', 'Metal', 'LoFi'],
+            'BongoH': ['Sample H', '808-H', 'Snappy-H', 'LoFi-H'],
+            'BongoL': ['Sample L', '808-L', 'Snappy-L', 'LoFi-L'],
+            'Metal': ['Sampler', 'Bell', 'Trashy', 'LoFi'],
+            'Beep': ['Sampler', 'Beep', 'Boop', '8bit']
         };
 
+        const drumTypeNames = Object.keys(drumStyles);
+        const samplerPadByDrum = {
+            Kick: 0, Snare: 1, CHat: 2, OHat: 3, Clap: 4, Splash: 5,
+            Clave: 6, Cowbell: 6, Metal: 7, Beep: 13, TomL: 8, TomH: 9,
+            Rim: 10, Ride: 11, Crash: 12, Shaker: 14, BongoH: 5, BongoL: 5
+        };
+
+        function normalizeDrumType(rowName) {
+            const compact = String(rowName || '').replace(/[^a-z0-9]/gi, '').toLowerCase();
+            const aliases = {
+                kick01: 'Kick', kick: 'Kick',
+                snare02: 'Snare', snare: 'Snare',
+                hat03: 'CHat', chat: 'CHat', hatc: 'CHat', closedhat: 'CHat',
+                openhat04: 'OHat', ohat: 'OHat', hato: 'OHat', openhat: 'OHat',
+                rim11: 'Rim', rim: 'Rim',
+                clap05: 'Clap', clap: 'Clap',
+                crash13: 'Crash', crash: 'Crash',
+                ride12: 'Ride', ridefx16: 'Ride', ride: 'Ride',
+                perc06: 'Splash', splash: 'Splash',
+                cowbell07: 'Clave', cowbell: 'Clave',
+                metalfx08: 'Metal', metal: 'Metal',
+                tom09: 'TomL', toml: 'TomL', lowtom: 'TomL',
+                midtom10: 'TomH', tomh: 'TomH', midtom: 'TomH',
+                shaker15: 'Shaker', shaker: 'Shaker',
+                blip14: 'Beep', blip: 'Beep', beep: 'Beep',
+                bongoh: 'BongoH', bongol: 'BongoL',
+                extra: 'Beep'
+            };
+            return aliases[compact] || (drumStyles[rowName] ? rowName : 'Kick');
+        }
+
+        function getTrackRowDrumName(track, rowIdx) {
+            const template = instrumentTypes[track.typeId];
+            return normalizeDrumType(track.rowDrums?.[rowIdx] || template.rows[rowIdx]);
+        }
+
+        function getTrackRowVariantIndex(track, rowIdx) {
+            const drumName = getTrackRowDrumName(track, rowIdx);
+            const variants = drumStyles[drumName] || ['Default'];
+            const idx = track.rowStyles?.[rowIdx] || 0;
+            return Math.max(0, Math.min(variants.length - 1, idx));
+        }
+
+        function isSamplerDrumVariant(track, rowIdx) {
+            const drumName = getTrackRowDrumName(track, rowIdx);
+            const variant = (drumStyles[drumName] || [])[getTrackRowVariantIndex(track, rowIdx)] || '';
+            return variant.toLowerCase().startsWith('sampler') || variant.toLowerCase().startsWith('sample');
+        }
+
+        function getSamplerPadIndexForRow(track, rowIdx) {
+            if (track?.typeId === 'drumSet') return rowIdx;
+            const drumName = getTrackRowDrumName(track, rowIdx);
+            return samplerPadByDrum[drumName] ?? rowIdx;
+        }
+
+        function getSamplerRowLabel(track, rowIdx) {
+            const bankPads = getSamplerBankPads(track?.samplerBank || 'A');
+            const pad = bankPads[rowIdx];
+            if (!pad) return `PAD ${String(rowIdx + 1).padStart(2, '0')}`;
+            return String(pad.label || `PAD ${rowIdx + 1}`).toUpperCase();
+        }
+
+        const samplerKeyboardLabels = ['A', 'W', 'S', 'E', 'D', 'F', 'T', 'G', 'Y', 'H', 'U', 'J', 'K', 'O', 'L', ';'];
+        const samplerKeyboardLayout = [
+            { row: 2, col: 2, tone: 'white' }, { row: 1, col: 3, tone: 'black' },
+            { row: 2, col: 4, tone: 'white' }, { row: 1, col: 5, tone: 'black' },
+            { row: 2, col: 6, tone: 'white' }, { row: 2, col: 8, tone: 'white' },
+            { row: 1, col: 9, tone: 'black' }, { row: 2, col: 10, tone: 'white' },
+            { row: 1, col: 11, tone: 'black' }, { row: 2, col: 12, tone: 'white' },
+            { row: 1, col: 13, tone: 'black' }, { row: 2, col: 14, tone: 'white' },
+            { row: 2, col: 16, tone: 'white' }, { row: 1, col: 17, tone: 'black' },
+            { row: 2, col: 18, tone: 'white' }, { row: 2, col: 20, tone: 'white' }
+        ];
+        const samplerDisplayOnlyKeys = [
+            { label: 'P', row: 1, col: 19, tone: 'black' }
+        ];
+
         const instrumentTypes = {
-            'drumSet': { name: 'Drum Set', rows: ['Kick 01', 'Snare 02', 'Hat 03', 'Open Hat 04', 'Clap 05', 'Perc 06', 'Cowbell 07', 'Metal FX 08', 'Tom 09', 'Mid Tom 10', 'Rim 11', 'Ride 12', 'Crash 13', 'Blip 14', 'Shaker 15', 'Ride FX 16'], type: 'drum', adsr: { a: 0.005, d: 0.2, s: 0.0, r: 0.2 } },
-            'auxPerc': { name: 'Aux Perc', rows: ['Clave', 'TomH', 'TomL', 'BongoH', 'BongoL', 'Shaker', 'Cowbell'], type: 'drum', adsr: { a: 0.005, d: 0.2, s: 0.0, r: 0.2 } },
+            'drumSet': { name: 'Drum Set', rows: ['Kick', 'Snare', 'CHat', 'OHat', 'Clap', 'Splash', 'Clave', 'Metal', 'TomL', 'TomH', 'Rim', 'Ride', 'Crash', 'Beep', 'Shaker', 'Ride'], type: 'drum', adsr: { a: 0.005, d: 0.2, s: 0.0, r: 0.2 } },
+            'auxPerc': { name: 'Aux Perc', rows: ['Clave', 'Shaker', 'Clap', 'Splash', 'TomH', 'TomL', 'BongoH', 'BongoL', 'Splash', 'Clave', 'Metal', 'Beep'], type: 'drum', adsr: { a: 0.005, d: 0.2, s: 0.0, r: 0.2 } },
             'synthwave': { name: '80s Lead', rows: [], type: 'synth', adsr: { a: 0.05, d: 0.4, s: 0.5, r: 0.3 }, xy: { x: 0.6, y: 0.2 } },
             'bass': { name: 'Sub Bass', rows: [], type: 'synth', adsr: { a: 0.01, d: 0.4, s: 0.3, r: 0.2 }, baseOctaveOffset: -2, xy: { x: 0.2, y: 0.0 } },
             'pad': { name: 'Ethereal Pad', rows: [], type: 'synth', adsr: { a: 0.6, d: 1.0, s: 0.9, r: 2.0 }, xy: { x: 0.4, y: 0.0 }, baseOctaveOffset: 0 },
@@ -1665,10 +2052,12 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
         // --- Tooltip System ---
         const tooltipEl = document.getElementById('tooltip');
         document.addEventListener('mouseover', (e) => {
-            const target = e.target.closest('[data-tooltip]');
+            const target = e.target.closest('[data-tooltip], .patch-point');
             if (target) {
-                const text = target.getAttribute('data-tooltip');
-                const title = target.getAttribute('data-tooltip-title') || '';
+                const patchTooltip = target.classList.contains('patch-point') ? getPatchPointTooltip(target) : null;
+                const text = target.getAttribute('data-tooltip') || patchTooltip?.text || '';
+                const title = target.getAttribute('data-tooltip-title') || patchTooltip?.title || '';
+                if (!text && !title) return;
                 tooltipEl.textContent = '';
                 if (title) {
                     const titleEl = document.createElement('strong');
@@ -1684,7 +2073,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             if (tooltipEl.style.display === 'block') updateTooltipPos(e);
         });
         document.addEventListener('mouseout', (e) => {
-            const target = e.target.closest('[data-tooltip]');
+            const target = e.target.closest('[data-tooltip], .patch-point');
             if (target) tooltipEl.style.display = 'none';
         });
         function updateTooltipPos(e) {
@@ -1692,6 +2081,40 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             const y = e.clientY + 15;
             tooltipEl.style.left = Math.min(window.innerWidth - 210, x) + 'px';
             tooltipEl.style.top = Math.min(window.innerHeight - 100, y) + 'px';
+        }
+        function getPatchPointTooltip(point) {
+            const modLabels = {
+                x: ['FILTER CUTOFF IN', 'Receives modulation for filter cutoff.'],
+                y: ['FILTER Q IN', 'Receives modulation for filter resonance.'],
+                wobble: ['WOBBLE IN', 'Receives modulation for wobble/LFO rate.'],
+                decay: ['DECAY IN', 'Receives modulation for envelope decay.'],
+                sustain: ['SUSTAIN IN', 'Receives modulation for envelope sustain.'],
+                adsr: ['A/R IN', 'Receives modulation for envelope attack and release.']
+            };
+            const modMatch = point.id && point.id.match(/^mod_([^_]+)_/);
+            if (modMatch && modLabels[modMatch[1]]) {
+                const [title, text] = modLabels[modMatch[1]];
+                return { title, text };
+            }
+            if (point.classList.contains('audio-in')) {
+                return { title: 'AUDIO IN', text: 'Receives audio from an instrument or FX pedal output.' };
+            }
+            if (point.classList.contains('audio-out')) {
+                return { title: 'AUDIO OUT', text: 'Drag from here to route audio into an FX input.' };
+            }
+            if (point.classList.contains('midi-in')) {
+                return { title: 'MIDI IN', text: 'Receives notes from another track for MIDI doubling.' };
+            }
+            if (point.classList.contains('midi-out')) {
+                return { title: 'MIDI OUT', text: 'Drag from here to send this track’s notes to another track.' };
+            }
+            if (point.classList.contains('mod-out')) {
+                return { title: 'MOD OUT', text: 'Drag from here to send this modulator to a compatible input.' };
+            }
+            if (point.classList.contains('mod-in')) {
+                return { title: 'MOD IN', text: point.title || 'Receives modulation from a drawer or modulation output.' };
+            }
+            return null;
         }
 
         const state = {
@@ -2305,12 +2728,8 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 octaveOffset: 0,
                 baseOctaveOffset: template.baseOctaveOffset || 0,
                 loopMultiplier: 1,
-                rowStyles: template.rows.map(rowName => {
-                    if (template.type === 'drum' && drumStyles[rowName]) {
-                        return Math.floor(Math.random() * drumStyles[rowName].length);
-                    }
-                    return 0;
-                }),
+                rowDrums: template.type === 'drum' ? template.rows.map(rowName => normalizeDrumType(rowName)) : [],
+                rowStyles: template.rows.map(() => 0),
                 rowHeight: 18
             };
             track.grid = Array(template.rows.length).fill().map(() => Array(256).fill(false));
@@ -2364,7 +2783,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             track.glideMode = 'portamento'; // 'portamento' or 'glissando'
             track.lastFreq = null;
             track.xy = template.xy ? { ...template.xy } : { x: 0.8, y: 0.2 }; // Default: high cutoff, low resonance
-            track.modLinks = { x: null, y: null, decay: null, adsr: null, wobble: null }; // IDs of drawers
+            track.modLinks = { x: null, y: null, decay: null, sustain: null, adsr: null, wobble: null }; // IDs of drawers
             track.wobbleRate = (state.bpm / 60) * 2; // Default to 8th notes
             track.voiceLfoEnabled = template.voiceLfoDefault === true;
             track.midiDoublingTargetId = null; // ID of target track for MIDI mirroring
@@ -2952,6 +3371,46 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             });
         }
 
+        function flashSamplerPadControls(track, padIdx, duration = 100) {
+            const padEl = document.getElementById(`pad_${track.id}_${padIdx}`);
+            if (padEl) {
+                const padLabel = padEl.querySelector('span:nth-child(2)');
+                padEl.style.background = 'var(--accent-cyan)';
+                if (padLabel) padLabel.style.color = '#000';
+                padEl.style.transform = 'translateY(1px)';
+                padEl.style.boxShadow = '0 0 15px var(--accent-cyan)';
+                setTimeout(() => {
+                    padEl.style.background = '#1a1a20';
+                    if (padLabel) padLabel.style.color = 'var(--accent-cyan)';
+                    padEl.style.transform = 'translateY(0)';
+                    padEl.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.05)';
+                }, duration);
+            }
+
+            const keyEl = document.getElementById(`key_${track.id}_${padIdx}`);
+            if (keyEl) {
+                keyEl.classList.add('active');
+                setTimeout(() => keyEl.classList.remove('active'), duration);
+            }
+        }
+
+        function triggerSamplerKeyboardPad(track, padIdx, time = audioCtx.currentTime) {
+            if (!track || padIdx < 0) return null;
+            const bankPads = getSamplerBankPads(track.samplerBank || 'A');
+            const padData = bankPads[padIdx];
+            if (!padData) return null;
+
+            const localGain = audioCtx.createGain();
+            localGain.connect(track.filterNode);
+            const voiceId = `${track.id}_pad_${padIdx}_${time.toFixed(6)}_${Math.random().toString(36).substr(2, 5)}`;
+            const voice = { id: voiceId, track, rowIdx: padIdx, gain: localGain, nodes: [], oneShot: true, startTime: time };
+            state.activeNotes.set(voiceId, voice);
+            flashSamplerPadControls(track, padIdx);
+            triggerSamplerPad(padData, localGain, time, voice, track);
+            if (track.sidechainEnabled && padIdx === 0) triggerSidechain(time);
+            return voice;
+        }
+
         function renderSamplerModule(track, header, minBtn, patchIn, typeSelect, octBadge, meterContainer, soloBtn, muteBtn, volPanCont, subdivSelect, loopGroup, adsrGroup, xyGroup, randGroup, midiHub) {
             if (header) track._samplerArgs = [header, minBtn, patchIn, typeSelect, octBadge, meterContainer, soloBtn, muteBtn, volPanCont, subdivSelect, loopGroup, adsrGroup, xyGroup, randGroup, midiHub];
             if (!track._samplerArgs) return;
@@ -2971,7 +3430,11 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 header.style.padding = '9px 8px 8px';
                 header.style.border = '1px solid var(--glass-border)';
                 header.style.borderRadius = '8px';
-                header.append(minBtn, patchIn, document.createTextNode(instrumentTypes[track.typeId].name.toUpperCase()), octBadge, meterContainer, soloBtn, muteBtn);
+                const title = document.createElement('span');
+                title.className = 'label';
+                title.style.cssText = 'min-width:78px; color:var(--accent-yellow); font-weight:900;';
+                title.textContent = instrumentTypes[track.typeId].name.toUpperCase();
+                header.append(minBtn, patchIn, title, octBadge, createMinimizedModStrip(track), meterContainer, soloBtn, muteBtn);
                 appendHeaderMidiHub(header, track, midiHub, true);
                 return;
             }
@@ -3013,6 +3476,8 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 newTrack.glideTime = oldTrack.glideTime;
                 newTrack.glideMode = oldTrack.glideMode || newTrack.glideMode;
                 newTrack.arp = normalizeArp({ ...newTrack.arp, ...oldTrack.arp, heldNotes: [], currentIdx: 0, lastStep: -1 });
+                if (newTrack.rowDrums && oldTrack.rowDrums) newTrack.rowDrums = newTrack.rowDrums.map((drumName, idx) => normalizeDrumType(oldTrack.rowDrums[idx] || drumName));
+                if (newTrack.rowStyles && oldTrack.rowStyles) newTrack.rowStyles = newTrack.rowStyles.map((styleIdx, idx) => oldTrack.rowStyles[idx] ?? styleIdx);
                 for (let r = 0; r < Math.min(oldGrid.length, newTrack.grid.length); r++) for (let s = 0; s < Math.min(oldGrid[r].length, newTrack.grid[r].length); s++) newTrack.grid[r][s] = oldGrid[r][s];
                 refreshLookupMap();
                 renderTracks();
@@ -3025,33 +3490,49 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
 
             const topRightGroup = document.createElement('div');
             topRightGroup.style.cssText = 'margin-left:auto; display:flex; align-items:center; gap:12px; padding-right:32px;';
-            prepareHeaderMidiHub(midiHub, track);
-            topRightGroup.append(midiHub, meterContainer, loopGroup, subdivSelect);
+            topRightGroup.append(meterContainer, loopGroup, subdivSelect);
 
             masterRow.append(minBtn, patchIn, typeSelect, octBadge, soloMuteCont, volPanCont, topRightGroup);
             header.appendChild(masterRow);
 
             const contentRow = document.createElement('div');
-            contentRow.style.cssText = 'display:flex; flex-direction:row; gap:12px; flex:1; align-items:flex-start; overflow:visible;';
+            contentRow.style.cssText = 'display:flex; flex-direction:row; gap:10px; flex:1; align-items:stretch; overflow:visible; min-height:184px;';
+            const createDrumModuleDivider = () => {
+                const divider = document.createElement('div');
+                divider.className = 'drum-module-divider';
+                return divider;
+            };
 
             // --- COLUMN 1: FILTER & ENV ---
             const farLeftPane = document.createElement('div');
-            farLeftPane.style.cssText = 'display:flex; flex-direction:column; gap:8px; min-width:240px; border-right:1px solid rgba(255,255,255,0.05); padding-right:12px;';
+            farLeftPane.style.cssText = 'display:flex; flex-direction:column; gap:8px; flex:0 0 222px; width:222px; align-items:flex-start; align-self:stretch;';
             if (xyGroup) {
                 xyGroup.style.flex = 'none';
-                xyGroup.style.height = '100px';
+                xyGroup.style.height = '64px';
+                xyGroup.style.marginLeft = '0';
+                xyGroup.querySelectorAll('.label').forEach(label => {
+                    label.style.color = '#9aa1ad';
+                    label.style.opacity = '1';
+                });
+                const drumXyCanvas = xyGroup.querySelector('.xy-pad');
+                if (drumXyCanvas) {
+                    const dpr = window.devicePixelRatio || 1;
+                    drumXyCanvas.width = 140 * dpr;
+                    drumXyCanvas.height = 64 * dpr;
+                }
                 farLeftPane.appendChild(xyGroup);
             }
             if (adsrGroup) {
                 adsrGroup.style.flex = 'none';
-                adsrGroup.style.height = '100px';
+                adsrGroup.style.height = 'auto';
                 farLeftPane.appendChild(adsrGroup);
             }
             contentRow.appendChild(farLeftPane);
+            contentRow.appendChild(createDrumModuleDivider());
 
             // --- COLUMN 2: MCP2000 CORE ---
             const mcpCore = document.createElement('div');
-            mcpCore.style.cssText = 'display:flex; flex-direction:row; gap:12px; flex:1; min-width:550px; position:relative;';
+            mcpCore.style.cssText = 'display:flex; flex-direction:row; gap:10px; flex:0 1 auto; min-width:536px; position:relative; align-items:stretch;';
 
             // Left Pane: Bank + Pads
             const leftPane = document.createElement('div');
@@ -3059,6 +3540,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             leftPane.style.flexDirection = 'column';
             leftPane.style.gap = '8px';
             leftPane.style.minWidth = '184px';
+            leftPane.style.alignSelf = 'stretch';
 
             const topRow = document.createElement('div');
             topRow.style.display = 'flex';
@@ -3077,19 +3559,20 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 track.lastSampleDuration = 0;
                 track._peakCache = null;
                 preloadSamplerBank(track.samplerBank);
+                trackElementCache.delete(track.id);
                 renderTracks();
             };
             topRow.append(bankToggle);
 
             const padGrid = document.createElement('div');
-            padGrid.style.cssText = 'display:grid; grid-template-columns:repeat(4, 1fr); gap:5px;';
+            padGrid.style.cssText = 'display:grid; grid-template-columns:repeat(4, 1fr); gap:5px; flex:1;';
             const currentBank = track.samplerBank || 'A';
             for (let i = 0; i < 16; i++) {
                 const pad = document.createElement('div');
                 pad.className = 'mpc-pad interactive-element';
                 pad.id = `pad_${track.id}_${i}`;
                 pad.setAttribute('role', 'button'); pad.setAttribute('tabindex', '0');
-                pad.style.cssText = `width:40px; height:34px; background:#1a1a20; border:1px solid #333; border-radius:4px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:6.5px; color:var(--text-dim); cursor:pointer; text-align:center; transition:0.05s; box-shadow:inset 0 1px 0 rgba(255,255,255,0.05);`;
+                pad.style.cssText = `width:40px; min-height:34px; height:auto; background:#1a1a20; border:1px solid #333; border-radius:4px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:6.5px; color:var(--text-dim); cursor:pointer; text-align:center; transition:0.05s; box-shadow:inset 0 1px 0 rgba(255,255,255,0.05);`;
                 let label = `Pad ${i + 1}`;
                 if (currentBank === 'A' && typeof mcp2000_config !== 'undefined' && mcp2000_config.pads[i]) label = mcp2000_config.pads[i].label;
                 else if (currentBank === 'B' && typeof mcp2000_config_b !== 'undefined' && mcp2000_config_b.pads[i]) label = mcp2000_config_b.pads[i].label;
@@ -3098,8 +3581,9 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 pad.append(padNum, padLabel);
                 pad.onmousedown = (e) => {
                     e.stopPropagation(); pad.style.background = 'var(--accent-cyan)'; padLabel.style.color = '#000'; pad.style.transform = 'translateY(1px)'; pad.style.boxShadow = '0 0 15px var(--accent-cyan)';
-                    const voice = { nodes: [] }; noteOn(track, i, audioCtx.currentTime, voice, true); recordNote(track, i, true);
-                    const onUp = () => { pad.style.background = '#1a1a20'; padLabel.style.color = 'var(--accent-cyan)'; pad.style.transform = 'translateY(0)'; pad.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.05)'; noteOff(track, i, audioCtx.currentTime); recordNote(track, i, false); window.removeEventListener('mouseup', onUp); };
+                    triggerSamplerKeyboardPad(track, i, audioCtx.currentTime);
+                    if (track.grid[i]) recordNote(track, i, true);
+                    const onUp = () => { pad.style.background = '#1a1a20'; padLabel.style.color = 'var(--accent-cyan)'; pad.style.transform = 'translateY(0)'; pad.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.05)'; if (track.grid[i]) recordNote(track, i, false); window.removeEventListener('mouseup', onUp); };
                     window.addEventListener('mouseup', onUp);
                 };
                 padGrid.appendChild(pad);
@@ -3109,6 +3593,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             // Right Pane: Waveform, Keyboard, Dials
             const rightPane = document.createElement('div');
             rightPane.className = 'sampler-preview-pane';
+            rightPane.style.alignSelf = 'stretch';
             const editorWrap = document.createElement('div');
             editorWrap.className = 'sampler-editor';
             const editorHeader = document.createElement('div');
@@ -3124,16 +3609,36 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             for (let i = 0; i < 16; i++) {
                 const key = document.createElement('div'); key.setAttribute('role', 'button'); key.setAttribute('tabindex', '0');
                 key.id = `key_${track.id}_${i}`;
-                const isBlack = [1, 3, 6, 8, 10, 13, 15].includes(i);
+                const keyLayout = samplerKeyboardLayout[i] || { row: 2, col: i + 1, tone: 'white' };
+                const isBlack = keyLayout.tone === 'black';
                 key.className = `mpc-key ${isBlack ? 'black' : 'white'} interactive-element`;
+                key.style.gridRow = `${keyLayout.row}`;
+                key.style.gridColumn = `${keyLayout.col} / span 2`;
+                const computerLabel = document.createElement('span');
+                computerLabel.className = 'computer-key-label';
+                computerLabel.textContent = samplerKeyboardLabels[i] || '';
+                key.appendChild(computerLabel);
                 key.onmousedown = (e) => {
                     e.stopPropagation(); key.classList.add('active');
-                    const voice = { nodes: [] }; noteOn(track, i, audioCtx.currentTime, voice, true); recordNote(track, i, true);
-                    const onUp = () => { key.classList.remove('active'); noteOff(track, i, audioCtx.currentTime); recordNote(track, i, false); window.removeEventListener('mouseup', onUp); };
+                    triggerSamplerKeyboardPad(track, i, audioCtx.currentTime);
+                    if (track.grid[i]) recordNote(track, i, true);
+                    const onUp = () => { key.classList.remove('active'); if (track.grid[i]) recordNote(track, i, false); window.removeEventListener('mouseup', onUp); };
                     window.addEventListener('mouseup', onUp);
                 };
                 keysContainer.appendChild(key);
             }
+            samplerDisplayOnlyKeys.forEach(displayKey => {
+                const key = document.createElement('div');
+                key.className = `mpc-key display-only ${displayKey.tone === 'black' ? 'black' : 'white'} interactive-element`;
+                key.setAttribute('aria-hidden', 'true');
+                key.style.gridRow = `${displayKey.row}`;
+                key.style.gridColumn = `${displayKey.col} / span 2`;
+                const computerLabel = document.createElement('span');
+                computerLabel.className = 'computer-key-label';
+                computerLabel.textContent = displayKey.label;
+                key.appendChild(computerLabel);
+                keysContainer.appendChild(key);
+            });
 
             const dials = document.createElement('div'); dials.style.cssText = 'display:flex; gap:12px; align-items:center;';
             const createDial = (label, prop, min, max, step) => {
@@ -3148,17 +3653,53 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             dials.appendChild(mcpLabel);
 
             rightPane.append(editorWrap, keysContainer, dials);
-            mcpCore.append(leftPane, rightPane);
+            mcpCore.append(leftPane, createDrumModuleDivider(), rightPane);
             contentRow.appendChild(mcpCore);
+            contentRow.appendChild(createDrumModuleDivider());
 
             // --- COLUMN 3: PATTERN & CONTROLS ---
             const farRightPane = document.createElement('div');
-            farRightPane.style.cssText = 'display:flex; flex-direction:column; gap:8px; min-width:220px; border-left:1px solid rgba(255,255,255,0.05); padding-left:12px;';
+            farRightPane.style.cssText = 'display:flex; flex-direction:row; gap:10px; min-width:430px; align-items:flex-start; margin-left:auto;';
 
-            const midiRandRow = document.createElement('div'); midiRandRow.style.cssText = 'display:flex; gap:8px;';
-            if (randGroup) { randGroup.style.flex = '1'; midiRandRow.appendChild(randGroup); }
+            prepareHeaderMidiHub(midiHub, track);
+            midiHub.classList.add('drum-midi-box');
+            midiHub.style.cssText = 'display:flex; align-items:center; justify-content:center; gap:8px; height:62px; min-width:92px; padding:10px 8px; background:linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018)); border:1px solid rgba(255,255,255,0.2); border-radius:5px; flex:0 0 auto;';
+            const midiLabelEl = midiHub.querySelector('.label');
+            if (midiLabelEl) midiLabelEl.style.cssText = 'font-size:0.48rem; opacity:1; color:#9aa1ad; white-space:nowrap;';
 
-            farRightPane.append(midiRandRow);
+            if (randGroup) {
+                randGroup.classList.add('drum-random-controls');
+                randGroup.style.cssText = 'display:flex; flex-direction:column; gap:7px; padding:10px; background:linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018)); border:1px solid rgba(255,255,255,0.2); border-radius:6px; width:320px; min-width:320px; flex:0 0 320px; box-shadow:inset 0 1px 0 rgba(255,255,255,0.05), 0 8px 18px rgba(0,0,0,0.22);';
+                const randTop = randGroup.firstElementChild;
+                const randGrid = randGroup.lastElementChild;
+                if (randTop) randTop.style.cssText = 'display:flex; align-items:center; gap:7px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:6px;';
+                if (randGrid) randGrid.style.cssText = 'display:grid; grid-template-columns:1fr 1fr; gap:7px 14px;';
+                randGroup.querySelectorAll('button').forEach(btn => {
+                    btn.style.minWidth = '24px';
+                    btn.style.height = '22px';
+                    btn.style.fontSize = '0.55rem';
+                    btn.style.fontWeight = '800';
+                    btn.style.padding = '0 5px';
+                });
+                const randStyle = randGroup.querySelector('select');
+                if (randStyle) {
+                    randStyle.style.width = '88px';
+                    randStyle.style.height = '22px';
+                    randStyle.style.fontSize = '0.58rem';
+                }
+                randGroup.querySelectorAll('input[type="range"]').forEach(slider => {
+                    slider.style.width = '78px';
+                    slider.style.height = '4px';
+                });
+                randGroup.querySelectorAll('.label').forEach(label => {
+                    label.style.fontSize = '0.48rem';
+                    label.style.opacity = '1';
+                    label.style.width = '34px';
+                });
+            }
+
+            farRightPane.append(midiHub, createDrumModuleDivider());
+            if (randGroup) farRightPane.append(randGroup);
             contentRow.appendChild(farRightPane);
             header.appendChild(contentRow);
         }
@@ -3315,6 +3856,27 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             header.appendChild(midiHub);
         }
 
+        function createMinimizedModStrip(track) {
+            const strip = document.createElement('div');
+            strip.className = 'minimized-port-strip interactive-element';
+            strip.onclick = (e) => e.stopPropagation();
+            const ports = [
+                { label: 'Q', target: 'y', color: 'var(--accent-pink)' },
+                { label: 'F', target: 'x', color: 'var(--accent-cyan)' },
+                { label: 'W', target: 'wobble', color: 'var(--accent-yellow)' },
+                { label: 'S', target: 'sustain', color: 'var(--accent-purple)' },
+                { label: 'A/R', target: 'adsr', color: 'var(--accent-pink)' }
+            ];
+            ports.forEach(({ label, target, color }) => {
+                const wrap = document.createElement('div');
+                wrap.className = 'minimized-port-wrap';
+                wrap.style.color = color;
+                wrap.append(document.createTextNode(label), createModPort(target, track));
+                strip.appendChild(wrap);
+            });
+            return strip;
+        }
+
         function createAddTrackBtn() {
             const addBtn = document.createElement('button');
             addBtn.className = 'add-track-btn';
@@ -3422,6 +3984,8 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                     newTrack.glideMode = oldTrack.glideMode || newTrack.glideMode;
                     newTrack.arp = normalizeArp({ ...newTrack.arp, ...oldTrack.arp, heldNotes: [], currentIdx: 0, lastStep: -1 });
                     newTrack.modLinks = { ...oldTrack.modLinks };
+                    if (newTrack.rowDrums && oldTrack.rowDrums) newTrack.rowDrums = newTrack.rowDrums.map((drumName, idx) => normalizeDrumType(oldTrack.rowDrums[idx] || drumName));
+                    if (newTrack.rowStyles && oldTrack.rowStyles) newTrack.rowStyles = newTrack.rowStyles.map((styleIdx, idx) => oldTrack.rowStyles[idx] ?? styleIdx);
                     for (let r = 0; r < Math.min(oldGrid.length, newTrack.grid.length); r++) {
                         for (let s = 0; s < Math.min(oldGrid[r].length, newTrack.grid[r].length); s++) {
                             newTrack.grid[r][s] = oldGrid[r][s];
@@ -3478,7 +4042,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
 
             let adsrGroup = null;
             if (track.adsr) {
-                adsrGroup = document.createElement('div'); adsrGroup.className = 'adsr-group';
+                adsrGroup = document.createElement('div'); adsrGroup.className = `adsr-group ${track.typeId === 'drumSet' ? 'drum-adsr-group' : ''}`;
                 const adsrCanvas = document.createElement('canvas');
                 adsrCanvas.className = 'adsr-display';
                 adsrCanvas.id = `adsr_${track.id}`;
@@ -3498,8 +4062,10 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                     lbl.className = 'knob-label-adsr';
                     lbl.textContent = key === 'r' ? 'A/R' : label;
                     modRow.appendChild(lbl);
-                    if (key === 'd') modRow.appendChild(createModPort('decay', track));
-                    if (key === 'r') modRow.appendChild(createModPort('adsr', track));
+                    if (track.typeId !== 'drumSet') {
+                        if (key === 'd') modRow.appendChild(createModPort('decay', track));
+                        if (key === 'r') modRow.appendChild(createModPort('adsr', track));
+                    }
                     const knob = document.createElement('div'); knob.className = 'knob';
                     const pip = document.createElement('div'); pip.className = 'knob-pip'; knob.appendChild(pip);
                     const defaults = track.adsrDefaults || (instrumentTypes[track.typeId] ? instrumentTypes[track.typeId].adsr : null);
@@ -3529,7 +4095,25 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                     });
                     wrap.append(modRow, knob, valEl); knobsRow.appendChild(wrap);
                 });
-                adsrGroup.append(knobsRow, adsrCanvas);
+                if (track.typeId === 'drumSet') {
+                    const adsrGraphRow = document.createElement('div');
+                    adsrGraphRow.className = 'drum-adsr-graph-row';
+                    const adsrModInputs = document.createElement('div');
+                    adsrModInputs.className = 'xy-mod-inputs drum-adsr-mod-inputs';
+                    const createAdsrModWrap = (label, target, color) => {
+                        const wrap = document.createElement('div');
+                        wrap.className = 'xy-mod-row';
+                        wrap.style.color = color;
+                        wrap.append(document.createTextNode(label), createModPort(target, track));
+                        return wrap;
+                    };
+                    adsrModInputs.append(
+                        createAdsrModWrap('S', 'sustain', 'var(--accent-purple)'),
+                        createAdsrModWrap('A/R', 'adsr', 'var(--accent-pink)')
+                    );
+                    adsrGraphRow.append(adsrModInputs, adsrCanvas);
+                    adsrGroup.append(adsrGraphRow, knobsRow);
+                } else adsrGroup.append(knobsRow, adsrCanvas);
                 setTimeout(() => {
                     adsrCanvas.width = adsrCanvas.offsetWidth * (devicePixelRatio || 1); adsrCanvas.height = adsrCanvas.offsetHeight * (devicePixelRatio || 1);
                     drawADSR(adsrCanvas, track.adsr, track, state.activeTrackId === index);
@@ -3583,7 +4167,14 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 loopSelect.appendChild(opt);
             });
             loopSelect.onclick = (e) => e.stopPropagation();
-            loopSelect.onchange = (e) => { track.loopMultiplier = parseInt(e.target.value); renderTracks(); };
+            loopSelect.onchange = (e) => {
+                const nextMultiplier = parseInt(e.target.value, 10);
+                if (track.loopMultiplier === nextMultiplier) return;
+                track.loopMultiplier = nextMultiplier;
+                track.gridCells = null;
+                trackElementCache.delete(track.id);
+                renderTracks();
+            };
 
             const loopLabel = document.createElement('span');
             loopLabel.className = 'label';
@@ -3742,15 +4333,16 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             let glideGroup = null;
             if (template.type !== 'drum') {
                 glideGroup = document.createElement('div');
-                glideGroup.style.cssText = 'display:flex; flex-direction:column; gap:1px; padding:1px 3px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:4px; min-width:50px;';
+                glideGroup.className = 'melodic-glide-group';
+                glideGroup.style.cssText = 'display:flex; flex-direction:column; gap:3px; padding:4px 6px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:5px; min-width:118px;';
                 const glideTop = document.createElement('div');
-                glideTop.style.cssText = 'display:flex; align-items:center; justify-content:center; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:1px;';
+                glideTop.style.cssText = 'display:flex; align-items:center; justify-content:center; border-bottom:1px solid rgba(255,255,255,0.07); padding-bottom:3px;';
                 const glideBtn = document.createElement('button');
                 glideBtn.textContent = 'GLIDE';
                 glideBtn.className = `glide-btn ${track.glide ? 'active' : ''}`;
                 glideBtn.setAttribute('data-tooltip-title', 'Portamento / Glide');
                 glideBtn.setAttribute('data-tooltip', 'Enable smooth frequency sliding between consecutive notes.');
-                glideBtn.style.cssText = 'font-size:0.4rem; padding:0px 2px; height:12px; line-height:10px;';
+                glideBtn.style.cssText = 'font-size:0.45rem; padding:1px 6px; height:16px; line-height:12px; flex:1;';
                 if (track.glide) glideBtn.classList.add('active');
                 glideBtn.onclick = () => { track.glide = !track.glide; renderTracks(); };
                 glideTop.appendChild(glideBtn);
@@ -3758,7 +4350,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 const glissBtn = document.createElement('button');
                 glissBtn.textContent = 'STEP';
                 glissBtn.className = `glide-btn ${track.glideMode === 'glissando' ? 'active' : ''}`;
-                glissBtn.style.cssText = 'font-size:0.4rem; padding:0px 2px; height:12px; line-height:10px; margin-left:2px;';
+                glissBtn.style.cssText = 'font-size:0.45rem; padding:1px 6px; height:16px; line-height:12px; margin-left:3px; flex:1;';
                 glissBtn.setAttribute('data-tooltip', 'Glissando mode: frequency slides in semitone steps.');
                 glissBtn.onclick = (e) => {
                     e.stopPropagation();
@@ -3769,7 +4361,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 const glideSlider = document.createElement('input');
                 glideSlider.type = 'range'; glideSlider.min = '0'; glideSlider.max = '0.5'; glideSlider.step = '0.01';
                 glideSlider.dataset.control = 'track-glide-time';
-                glideSlider.value = track.glideTime; glideSlider.style.cssText = 'height:2px; accent-color:var(--accent-yellow); width:40px; margin:0 auto;';
+                glideSlider.value = track.glideTime; glideSlider.style.cssText = 'height:3px; accent-color:var(--accent-yellow); width:100%; margin:1px auto 0;';
                 glideSlider.oninput = (e) => {
                     track.glideTime = parseFloat(e.target.value);
                     track.glide = track.glideTime > 0;
@@ -3780,7 +4372,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
 
                 const arpGroup = document.createElement('div');
                 arpGroup.className = 'arp-group';
-                arpGroup.style.cssText = 'display:flex; flex-direction:column; gap:3px; padding:3px 4px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:4px; min-width:126px; margin-left:4px;';
+                arpGroup.style.cssText = 'display:flex; flex-direction:column; gap:4px; padding:5px 6px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:5px; min-width:128px;';
                 arpGroup.setAttribute('data-tooltip-title', 'Arpeggiator');
                 arpGroup.setAttribute('data-tooltip', 'ARP builds a note pool from held keyboard notes or active melodic sequencer notes, then plays one pooled pitch per RATE step. LATCH keeps the last pool armed after keys or sequencer notes release; with LATCH off, the pool clears when nothing is held. DIR sets the pool order, including RANDOM picks.');
                 arpGroup.onmousedown = (e) => e.stopPropagation();
@@ -3788,12 +4380,12 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 track.arp = normalizeArp(track.arp);
 
                 const arpTop = document.createElement('div');
-                arpTop.style.cssText = 'display:flex; align-items:center; gap:3px; width:100%;';
+                arpTop.style.cssText = 'display:flex; align-items:center; gap:4px; width:100%;';
                 const arpBtn = document.createElement('button');
                 arpBtn.textContent = 'ARP';
                 arpBtn.className = `glide-btn ${track.arp?.enabled ? 'active' : ''}`;
                 arpBtn.dataset.control = 'arp-toggle';
-                arpBtn.style.cssText = 'font-size:0.48rem; padding:1px 4px; height:17px; line-height:13px; flex:1;';
+                arpBtn.style.cssText = 'font-size:0.5rem; padding:1px 4px; height:18px; line-height:14px; flex:1;';
                 arpBtn.onclick = (e) => {
                     e.stopPropagation();
                     track.arp = normalizeArp(track.arp);
@@ -3805,7 +4397,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 latchBtn.textContent = 'LATCH';
                 latchBtn.className = `glide-btn ${track.arp?.latch ? 'active' : ''}`;
                 latchBtn.dataset.control = 'arp-latch';
-                latchBtn.style.cssText = 'font-size:0.48rem; padding:1px 4px; height:17px; line-height:13px; flex:1;';
+                latchBtn.style.cssText = 'font-size:0.5rem; padding:1px 4px; height:18px; line-height:14px; flex:1;';
                 latchBtn.onclick = (e) => {
                     e.stopPropagation();
                     track.arp = normalizeArp(track.arp);
@@ -3816,11 +4408,11 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 arpTop.append(arpBtn, latchBtn);
 
                 const arpSettings = document.createElement('div');
-                arpSettings.style.cssText = 'display:grid; grid-template-columns:44px 1fr; gap:3px; width:100%;';
+                arpSettings.style.cssText = 'display:grid; grid-template-columns:46px 1fr; gap:4px; width:100%;';
                 const rateSelect = document.createElement('select');
                 rateSelect.dataset.control = 'arp-rate';
                 rateSelect.setAttribute('aria-label', 'ARP Rate');
-                rateSelect.style.cssText = 'font-size:0.48rem; background:#101015; border:1px solid var(--glass-border); border-radius:3px; color:var(--accent-yellow); height:17px; padding:0 2px; width:100%;';
+                rateSelect.style.cssText = 'font-size:0.5rem; background:#101015; border:1px solid var(--glass-border); border-radius:3px; color:var(--accent-yellow); height:18px; padding:0 2px; width:100%;';
                 ARP_RATE_OPTIONS.forEach(({ label, value }) => {
                     const opt = document.createElement('option'); opt.value = value; opt.textContent = label;
                     if (track.arp?.subdivision === value) opt.selected = true;
@@ -3834,7 +4426,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 const dirSelect = document.createElement('select');
                 dirSelect.dataset.control = 'arp-direction';
                 dirSelect.setAttribute('aria-label', 'ARP Direction');
-                dirSelect.style.cssText = 'font-size:0.48rem; background:#101015; border:1px solid var(--glass-border); border-radius:3px; color:var(--accent-yellow); height:17px; padding:0 2px; width:100%;';
+                dirSelect.style.cssText = 'font-size:0.5rem; background:#101015; border:1px solid var(--glass-border); border-radius:3px; color:var(--accent-yellow); height:18px; padding:0 2px; width:100%;';
                 ARP_DIRECTION_OPTIONS.forEach(({ label, value }) => {
                     const opt = document.createElement('option'); opt.value = value; opt.textContent = label;
                     if (track.arp?.direction === value) opt.selected = true;
@@ -3889,9 +4481,16 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             filterGroup.append(filterLabel, filterSelect);
 
             const modInputs = document.createElement('div'); modInputs.className = 'xy-mod-inputs';
-            const qWrap = document.createElement('div'); qWrap.style.cssText = 'display:flex; align-items:center; gap:3px; font-size:0.5rem; color:var(--accent-pink); font-weight:bold;'; qWrap.append(document.createTextNode('Q'), createModPort('y', track));
-            const fWrap = document.createElement('div'); fWrap.style.cssText = 'display:flex; align-items:center; gap:3px; font-size:0.5rem; color:var(--accent-cyan); font-weight:bold;'; fWrap.append(document.createTextNode('F'), createModPort('x', track));
-            const wWrap = document.createElement('div'); wWrap.style.cssText = 'display:flex; align-items:center; gap:3px; font-size:0.5rem; color:var(--accent-yellow); font-weight:bold;'; wWrap.append(document.createTextNode('W'), createModPort('wobble', track));
+            const createXyModWrap = (label, target, color) => {
+                const wrap = document.createElement('div');
+                wrap.className = 'xy-mod-row';
+                wrap.style.color = color;
+                wrap.append(document.createTextNode(label), createModPort(target, track));
+                return wrap;
+            };
+            const qWrap = createXyModWrap('Q', 'y', 'var(--accent-pink)');
+            const fWrap = createXyModWrap('F', 'x', 'var(--accent-cyan)');
+            const wWrap = createXyModWrap('W', 'wobble', 'var(--accent-yellow)');
             modInputs.append(qWrap, fWrap, wWrap);
             xyGroup.append(modInputs, xyCont, filterGroup);
 
@@ -3911,12 +4510,48 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 } else {
                     const row1 = document.createElement('div'); row1.className = 'header-row';
                     const row2 = document.createElement('div'); row2.className = 'header-row';
+                    const isMelodicPanel = template.type === 'synth';
+                    if (isMelodicPanel) {
+                        row1.classList.add('melodic-control-row');
+                        row2.classList.add('melodic-module-row');
+                    }
+                    const createMelodicDivider = () => {
+                        const divider = document.createElement('div');
+                        divider.className = 'melodic-module-divider';
+                        return divider;
+                    };
                     const topRightGroup = document.createElement('div');
                     topRightGroup.style.cssText = 'margin-left:auto; display:flex; align-items:center; gap:8px; padding-right:32px;';
                     prepareHeaderMidiHub(midiHub, track);
                     topRightGroup.append(midiHub, meterContainer, loopGroup, subdivSelect);
                     row1.append(minBtn, patchIn, select, octGroup, soloMuteCont, volPanCont, scBtn || document.createElement('div'), topRightGroup);
-                    row2.append(xyGroup, adsrGroup || document.createElement('div'), glideGroup || document.createElement('div'), track.arpGroup || document.createElement('div'), randGroup);
+                    if (isMelodicPanel && adsrGroup) {
+                        const adsrCanvas = adsrGroup.querySelector('.adsr-display');
+                        if (adsrCanvas) {
+                            const dpr = window.devicePixelRatio || 1;
+                            adsrCanvas.width = 112 * dpr;
+                            adsrCanvas.height = 56 * dpr;
+                        }
+                    }
+                    if (isMelodicPanel) {
+                        const perfGroup = document.createElement('div');
+                        perfGroup.className = 'melodic-perf-group';
+                        perfGroup.append(glideGroup || document.createElement('div'), track.arpGroup || document.createElement('div'));
+                        randGroup.style.minWidth = '230px';
+                        randGroup.style.padding = '7px 8px';
+                        randGroup.style.marginLeft = 'auto';
+                        row2.append(
+                            xyGroup,
+                            createMelodicDivider(),
+                            adsrGroup || document.createElement('div'),
+                            createMelodicDivider(),
+                            perfGroup,
+                            createMelodicDivider(),
+                            randGroup
+                        );
+                    } else {
+                        row2.append(xyGroup, adsrGroup || document.createElement('div'), glideGroup || document.createElement('div'), track.arpGroup || document.createElement('div'), randGroup);
+                    }
                     header.append(row1, row2);
                 }
             } else {
@@ -3928,7 +4563,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 header.style.padding = '9px 8px 8px';
                 header.style.border = '1px solid var(--glass-border)';
                 header.style.borderRadius = '8px';
-                header.append(minBtn, patchIn, document.createTextNode(instrumentTypes[track.typeId].name), octBadge, meterContainer, soloBtn, muteBtn);
+                header.append(minBtn, patchIn, document.createTextNode(instrumentTypes[track.typeId].name), octBadge, createMinimizedModStrip(track), meterContainer, soloBtn, muteBtn);
                 appendHeaderMidiHub(header, track, midiHub, true);
             }
 
@@ -3940,15 +4575,67 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 template.rows.forEach((rowName, rIdx) => {
                     const rowEl = document.createElement('div'); rowEl.className = 'grid-row';
                     track.gridCells[rIdx] = [];
-                    const label = document.createElement('div'); label.className = 'row-label'; label.textContent = rowName;
+                    const label = document.createElement('div'); label.className = 'row-label'; label.textContent = template.type === 'synth' ? formatPianoRollRowLabel(rowName) : rowName;
                     if (template.type === 'synth') label.dataset.noteKind = rowName.includes('#') ? 'sharp' : 'natural';
                     label.onmousedown = (e) => { e.preventDefault(); noteOn(track, rIdx, audioCtx.currentTime); const up = () => { noteOff(track, rIdx, audioCtx.currentTime); window.removeEventListener('mouseup', up); }; window.addEventListener('mouseup', up); };
-                    rowEl.appendChild(label);
+                    if (template.type !== 'drum') rowEl.appendChild(label);
                     if (template.type === 'drum') {
-                        const ds = document.createElement('select'); ds.style.cssText = 'font-size:0.5rem; width:50px; background:transparent; border:none; color:var(--text-dim);';
-                        (drumStyles[rowName] || ['Default']).forEach((s, si) => { const opt = document.createElement('option'); opt.value = si; opt.textContent = s; if (track.rowStyles[rIdx] === si) opt.selected = true; ds.appendChild(opt); });
-                        ds.onchange = (e) => { track.rowStyles[rIdx] = parseInt(e.target.value); };
-                        rowEl.appendChild(ds);
+                        const rowControls = document.createElement('div');
+                        rowControls.className = 'drum-row-controls';
+                        rowControls.style.cssText = 'display:flex; gap:2px; width:116px; flex:0 0 116px; overflow:hidden;';
+                        if (track.typeId === 'drumSet') rowControls.style.cssText = 'display:flex; gap:2px; width:180px; flex:0 0 180px; overflow:hidden;';
+
+                        if (track.typeId === 'drumSet') {
+                            const samplerLabel = document.createElement('div');
+                            samplerLabel.className = 'sampler-row-label';
+                            samplerLabel.textContent = getSamplerRowLabel(track, rIdx);
+                            samplerLabel.style.width = '58px';
+                            samplerLabel.style.justifyContent = 'flex-start';
+                            samplerLabel.style.textAlign = 'left';
+                            samplerLabel.setAttribute('data-tooltip-title', `PAD ${String(rIdx + 1).padStart(2, '0')}`);
+                            samplerLabel.setAttribute('data-tooltip', `Triggers ${getSamplerRowLabel(track, rIdx)} from sampler Bank ${track.samplerBank || 'A'}.`);
+                            samplerLabel.onmousedown = label.onmousedown;
+                            rowControls.appendChild(samplerLabel);
+                        }
+
+                        const drumSelect = document.createElement('select');
+                        drumSelect.setAttribute('aria-label', `Drum type for row ${rIdx + 1}`);
+                        drumSelect.style.cssText = 'font-size:0.48rem; width:58px; background:#111116; border:1px solid rgba(255,255,255,0.08); color:var(--text-dim); border-radius:2px;';
+                        const currentDrum = getTrackRowDrumName(track, rIdx);
+                        drumTypeNames.forEach(name => {
+                            const opt = document.createElement('option');
+                            opt.value = name;
+                            opt.textContent = name;
+                            if (name === currentDrum) opt.selected = true;
+                            drumSelect.appendChild(opt);
+                        });
+
+                        const variantSelect = document.createElement('select');
+                        variantSelect.setAttribute('aria-label', `Drum variant for row ${rIdx + 1}`);
+                        variantSelect.style.cssText = 'font-size:0.48rem; width:56px; background:#111116; border:1px solid rgba(255,255,255,0.08); color:var(--accent-cyan); border-radius:2px;';
+                        const populateVariants = () => {
+                            const drumName = drumSelect.value;
+                            const variants = drumStyles[drumName] || ['Default'];
+                            const selectedIdx = Math.max(0, Math.min(variants.length - 1, track.rowStyles[rIdx] || 0));
+                            variantSelect.textContent = '';
+                            variants.forEach((variant, si) => {
+                                const opt = document.createElement('option');
+                                opt.value = si;
+                                opt.textContent = variant;
+                                if (si === selectedIdx) opt.selected = true;
+                                variantSelect.appendChild(opt);
+                            });
+                        };
+                        populateVariants();
+
+                        drumSelect.onchange = (e) => {
+                            track.rowDrums[rIdx] = e.target.value;
+                            track.rowStyles[rIdx] = 0;
+                            populateVariants();
+                        };
+                        variantSelect.onchange = (e) => { track.rowStyles[rIdx] = parseInt(e.target.value, 10); };
+                        rowControls.append(drumSelect, variantSelect);
+                        rowEl.appendChild(rowControls);
                     }
                     const currentTrackSubdiv = track.subdiv || 4;
                     const trackSteps = (track.loopMultiplier || 1) * Math.round(state.timeSignature * currentTrackSubdiv);
@@ -4497,6 +5184,8 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 tracks: state.tracks.map(t => ({
                     typeId: t.typeId,
                     grid: JSON.parse(JSON.stringify(t.grid)),
+                    rowDrums: t.rowDrums ? [...t.rowDrums] : [],
+                    rowStyles: t.rowStyles ? [...t.rowStyles] : [],
                     volume: t.volume,
                     subdiv: t.subdiv,
                     octaveOffset: t.octaveOffset,
@@ -4541,6 +5230,8 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                     const t = state.tracks[i];
                     t.typeId = trackData.typeId;
                     t.grid = trackData.grid;
+                    if (trackData.rowDrums) t.rowDrums = trackData.rowDrums.map(normalizeDrumType);
+                    if (trackData.rowStyles) t.rowStyles = [...trackData.rowStyles];
                     t.volume = trackData.volume;
                     t.subdiv = trackData.subdiv;
                     t.octaveOffset = trackData.octaveOffset;
@@ -4688,8 +5379,8 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 const normalized = rowName.toLowerCase();
                 if (kind === 'kick') return normalized.includes('kick');
                 if (kind === 'snare') return normalized.includes('snare');
-                if (kind === 'closedHat') return normalized.includes('hat') && !normalized.includes('open');
-                if (kind === 'openHat') return normalized.includes('open') && normalized.includes('hat');
+                if (kind === 'closedHat') return normalized.includes('chat') || (normalized.includes('hat') && !normalized.includes('open') && !normalized.includes('ohat'));
+                if (kind === 'openHat') return normalized.includes('ohat') || (normalized.includes('open') && normalized.includes('hat'));
                 if (kind === 'clap') return normalized.includes('clap');
                 return false;
             };
@@ -4741,7 +5432,8 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                         const ghostProb = clampProbability(dens * 0.12);
 
                         template.rows.forEach((rowName, rIdx) => {
-                            if (isRowKind(rowName, 'kick')) {
+                            const drumName = getTrackRowDrumName(track, rIdx);
+                            if (isRowKind(drumName, 'kick')) {
                                 for (let s = 0; s < steps; s++) {
                                     const beat = Math.floor((s % stepsPerMeasure) / beatStep);
                                     const onBeat = s % beatStep === 0;
@@ -4750,7 +5442,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                                     else if (onBeat && Math.random() < supportBeatProb) track.grid[rIdx][s] = getRandNoteData(true);
                                     else if (onUpbeat && Math.random() < ghostProb) track.grid[rIdx][s] = getRandNoteData(true);
                                 }
-                            } else if (isRowKind(rowName, 'snare')) {
+                            } else if (isRowKind(drumName, 'snare')) {
                                 for (let s = 0; s < steps; s++) {
                                     const beat = Math.floor((s % stepsPerMeasure) / beatStep);
                                     const onBeat = s % beatStep === 0;
@@ -4758,20 +5450,20 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                                     if (onBeat && (beat === 1 || beat === 3) && Math.random() < strongBeatProb) track.grid[rIdx][s] = getRandNoteData(true);
                                     else if (nearBackbeat && Math.random() < ghostProb) track.grid[rIdx][s] = getRandNoteData(true);
                                 }
-                            } else if (isRowKind(rowName, 'closedHat')) {
+                            } else if (isRowKind(drumName, 'closedHat')) {
                                 for (let s = 0; s < steps; s++) {
                                     const onUpbeat = s % beatStep === eighthStep;
                                     const onBeat = s % beatStep === 0;
                                     if (onUpbeat && Math.random() < upbeatHatProb) track.grid[rIdx][s] = getRandNoteData(true);
                                     else if (onBeat && Math.random() < downbeatHatProb) track.grid[rIdx][s] = getRandNoteData(true);
                                 }
-                            } else if (isRowKind(rowName, 'openHat')) {
+                            } else if (isRowKind(drumName, 'openHat')) {
                                 for (let s = 0; s < steps; s++) {
                                     const beat = Math.floor((s % stepsPerMeasure) / beatStep);
                                     const onUpbeat = s % beatStep === eighthStep;
                                     if (onUpbeat && (beat === 1 || beat === 3) && Math.random() < dens * 0.18) track.grid[rIdx][s] = getRandNoteData(true);
                                 }
-                            } else if (isRowKind(rowName, 'clap')) {
+                            } else if (isRowKind(drumName, 'clap')) {
                                 for (let s = 0; s < steps; s++) {
                                     const beat = Math.floor((s % stepsPerMeasure) / beatStep);
                                     if (s % beatStep === 0 && (beat === 1 || beat === 3) && Math.random() < dens * 0.18) track.grid[rIdx][s] = getRandNoteData(true);
@@ -5099,6 +5791,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             { prefix: 'mod_x_', key: 'x' },
             { prefix: 'mod_y_', key: 'y' },
             { prefix: 'mod_decay_', key: 'decay' },
+            { prefix: 'mod_sustain_', key: 'sustain' },
             { prefix: 'mod_adsr_', key: 'adsr' },
             { prefix: 'mod_wobble_', key: 'wobble' }
         ];
@@ -5293,6 +5986,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                         if (track.modLinks.x === drawer.id) inEl = window.cableElementCache.mod_x.get(`mod_x_${track.id}`);
                         else if (track.modLinks.y === drawer.id) inEl = window.cableElementCache.mod_y.get(`mod_y_${track.id}`);
                         else if (track.modLinks.decay === drawer.id) inEl = window.cableElementCache.mod_decay.get(`mod_decay_${track.id}`);
+                        else if (track.modLinks.sustain === drawer.id) inEl = window.cableElementCache.mod_sustain.get(`mod_sustain_${track.id}`);
                         else if (track.modLinks.adsr === drawer.id) inEl = window.cableElementCache.mod_adsr.get(`mod_adsr_${track.id}`);
                         else if (track.modLinks.wobble === drawer.id) inEl = window.cableElementCache.mod_wobble.get(`mod_wobble_${track.id}`);
                         else inEl = window.cableElementCache.in.get(`in_${track.id}`);
@@ -5633,7 +6327,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 return null;
             }
             const template = instrumentTypes[track.typeId];
-            const rowName = template.rows[rowIdx];
+            const rowName = template.type === 'drum' ? getTrackRowDrumName(track, rowIdx) : template.rows[rowIdx];
             if (!rowName && template.type === 'synth') return null;
 
             const adsr = track.adsr;
@@ -5657,10 +6351,11 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 }
             }
 
-            if (track.typeId === 'drumSet') {
+            if (template.type === 'drum' && isSamplerDrumVariant(track, rowIdx)) {
+                const samplerPadIdx = getSamplerPadIndexForRow(track, rowIdx);
                 const delay = Math.max(0, (time - audioCtx.currentTime) * 1000);
                 setTimeout(() => {
-                    const padEl = document.getElementById(`pad_${track.id}_${rowIdx}`);
+                    const padEl = document.getElementById(`pad_${track.id}_${samplerPadIdx}`);
                     if (padEl) {
                         const padLabel = padEl.querySelector('span:nth-child(2)');
                         padEl.style.background = 'var(--accent-cyan)';
@@ -5674,23 +6369,20 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                             padEl.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.05)';
                         }, 100);
                     }
-                    const keyEl = document.getElementById(`key_${track.id}_${rowIdx}`);
+                    const keyEl = document.getElementById(`key_${track.id}_${samplerPadIdx}`);
                     if (keyEl) {
-                        const isBlack = [1, 3, 6, 8, 10, 13, 15].includes(rowIdx);
-                        keyEl.style.background = 'var(--accent-pink)';
-                        keyEl.style.transform = 'translateY(1px)';
+                        keyEl.classList.add('active');
                         setTimeout(() => {
-                            keyEl.style.background = isBlack ? '#111' : '#f0f0f0';
-                            keyEl.style.transform = 'translateY(0)';
+                            keyEl.classList.remove('active');
                         }, 100);
                     }
                 }, delay);
 
                 const currentBank = track.samplerBank || 'A';
-                if (currentBank === 'A' && typeof mcp2000_config !== 'undefined' && mcp2000_config.pads[rowIdx]) {
-                    triggerSamplerPad(mcp2000_config.pads[rowIdx], localGain, time, voice, track);
-                } else if (currentBank === 'B' && typeof mcp2000_config_b !== 'undefined' && mcp2000_config_b.pads[rowIdx]) {
-                    triggerSamplerPad(mcp2000_config_b.pads[rowIdx], localGain, time, voice, track);
+                if (currentBank === 'A' && typeof mcp2000_config !== 'undefined' && mcp2000_config.pads[samplerPadIdx]) {
+                    triggerSamplerPad(mcp2000_config.pads[samplerPadIdx], localGain, time, voice, track);
+                } else if (currentBank === 'B' && typeof mcp2000_config_b !== 'undefined' && mcp2000_config_b.pads[samplerPadIdx]) {
+                    triggerSamplerPad(mcp2000_config_b.pads[samplerPadIdx], localGain, time, voice, track);
                 } else {
                     // Fallback to simple noise
                     const noise = audioCtx.createBufferSource();
@@ -5703,7 +6395,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 }
                 if (track.sidechainEnabled) triggerSidechain(time);
             } else if (template.type === 'drum') {
-                const styleIdx = track.rowStyles[rowIdx] || 0;
+                const styleIdx = getTrackRowVariantIndex(track, rowIdx);
                 switch (rowName) {
                     case 'Kick': {
                         const styles = [['Classic', 150, 30, 0.5], ['Deep', 120, 20, 0.8], ['Snappy', 200, 40, 0.2], ['Industrial', 180, 25, 0.4]];
@@ -5744,6 +6436,29 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                         noise.start(time); osc.start(time);
                         osc.stop(time + s[2]);
                         voice.nodes.push(noise, osc);
+                        break;
+                    }
+                    case 'Clap': {
+                        const hpValues = [1800, 2600, 1400, 900];
+                        const n = audioCtx.createBufferSource();
+                        const b = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.22, audioCtx.sampleRate);
+                        for (let i = 0; i < b.length; i++) b.getChannelData(0)[i] = (Math.random() * 2 - 1) * (i % 180 < 75 ? 1 : 0.25);
+                        n.buffer = b;
+                        const f = audioCtx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hpValues[styleIdx % hpValues.length];
+                        n.connect(f); f.connect(localGain);
+                        localGain.gain.setValueAtTime(0.55, time);
+                        localGain.gain.exponentialRampToValueAtTime(0.001, time + (styleIdx === 3 ? 0.12 : 0.18));
+                        n.start(time); n.stop(time + 0.24); voice.nodes.push(n);
+                        break;
+                    }
+                    case 'Rim': {
+                        const freqs = [1800, 2600, 1100, 700];
+                        const osc = audioCtx.createOscillator(); osc.type = styleIdx === 1 ? 'square' : 'triangle'; osc.frequency.value = freqs[styleIdx % freqs.length];
+                        const bpf = audioCtx.createBiquadFilter(); bpf.type = 'bandpass'; bpf.frequency.value = freqs[styleIdx % freqs.length]; bpf.Q.value = 8;
+                        osc.connect(bpf); bpf.connect(localGain);
+                        localGain.gain.setValueAtTime(0.55, time);
+                        localGain.gain.exponentialRampToValueAtTime(0.001, time + 0.06);
+                        osc.start(time); osc.stop(time + 0.08); voice.nodes.push(osc);
                         break;
                     }
                     case 'HiHat': case 'OpenHat': case 'CHat': case 'OHat': {
@@ -5795,6 +6510,20 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                         voice.nodes.push(n);
                         break;
                     }
+                    case 'Splash': case 'Metal': {
+                        const isMetal = rowName === 'Metal';
+                        const s = isMetal ? [1200, 0.28, 14, 0.45] : [5500, 0.55, 4, 0.28];
+                        const n = audioCtx.createBufferSource();
+                        const b = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.8, audioCtx.sampleRate);
+                        for (let i = 0; i < b.length; i++) b.getChannelData(0)[i] = Math.random() * 2 - 1;
+                        n.buffer = b;
+                        const f = audioCtx.createBiquadFilter(); f.type = isMetal ? 'bandpass' : 'highpass'; f.frequency.value = s[0] + styleIdx * 450; f.Q.value = s[2];
+                        n.connect(f); f.connect(localGain);
+                        localGain.gain.setValueAtTime(s[3], time);
+                        localGain.gain.exponentialRampToValueAtTime(0.001, time + (styleIdx === 3 ? s[1] * 0.45 : s[1]));
+                        n.start(time); n.stop(time + s[1] + 0.1); voice.nodes.push(n);
+                        break;
+                    }
                     case 'Shaker': {
                         const styles = [8000, 5000, 3000];
                         const hp = styles[styleIdx % styles.length];
@@ -5832,6 +6561,15 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                         localGain.gain.setValueAtTime(0.7, time);
                         localGain.gain.exponentialRampToValueAtTime(0.001, time + (styleIdx === 1 ? 0.08 : 0.035));
                         osc.connect(localGain); osc.start(time); osc.stop(time + 0.15);
+                        voice.nodes.push(osc);
+                        break;
+                    }
+                    case 'Beep': {
+                        const freqs = [880, 1320, 660, 1046];
+                        const osc = audioCtx.createOscillator(); osc.type = styleIdx === 3 ? 'square' : 'sine'; osc.frequency.value = freqs[styleIdx % freqs.length];
+                        localGain.gain.setValueAtTime(0.35, time);
+                        localGain.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
+                        osc.connect(localGain); osc.start(time); osc.stop(time + 0.1);
                         voice.nodes.push(osc);
                         break;
                     }
@@ -6276,6 +7014,10 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                         targetTrack.adsr.d = Math.max(0.005, baseDecay + (val - 0.5) * baseDecay * 1.5);
                         const adsrCanvas = document.getElementById(`adsr_${targetTrack.id}`);
                         if (adsrCanvas) drawADSR(adsrCanvas, targetTrack.adsr, targetTrack, state.activeTrackId === state.tracks.indexOf(targetTrack));
+                    } else if (drawer.modTarget === 'sustain' && targetTrack.adsr) {
+                        targetTrack.adsr.s = Math.max(0, Math.min(1, val));
+                        const adsrCanvas = document.getElementById(`adsr_${targetTrack.id}`);
+                        if (adsrCanvas) drawADSR(adsrCanvas, targetTrack.adsr, targetTrack, state.activeTrackId === state.tracks.indexOf(targetTrack));
                     } else if (drawer.modTarget === 'adsr' && targetTrack.adsr) {
                         const baseA = targetTrack.adsrDefaults ? targetTrack.adsrDefaults.a : 0.1;
                         const baseR = targetTrack.adsrDefaults ? targetTrack.adsrDefaults.r : 0.4;
@@ -6524,7 +7266,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             if (template.type === 'drum') {
                 return {
                     'a': 0, 'w': 1, 's': 2, 'e': 3, 'd': 4, 'f': 5, 't': 6, 'g': 7,
-                    'y': 8, 'h': 9, 'u': 10, 'j': 11, 'k': 12, 'o': 13, 'l': 14, 'p': 15
+                    'y': 8, 'h': 9, 'u': 10, 'j': 11, 'k': 12, 'o': 13, 'l': 14, ';': 15
                 };
             }
 
@@ -6534,12 +7276,29 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                     'o': 11, 'l': 10, 'p': 9, ';': 8, '[': 7, "'": 6
                 };
             }
-            const keys = ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'"];
+            const keys = ['a', 'w', 's', 'e', 'd', 'f', 't', 'g', 'y', 'h', 'u', 'j', 'k', 'o', 'l', 'p', ';', '[', "'"];
             const map = {};
-            const rowNames = (template.type === 'synth') ? getScaleRows(noteNames.indexOf(state.globalKey), state.globalScale) : template.rows;
-            const numRows = rowNames.length;
+            const rowNames = template.rows;
+            const rootIdx = noteNames.indexOf(state.globalKey);
+            if (rootIdx < 0) return map;
+            const playableRows = rowNames
+                .map((name, rowIdx) => ({ rowIdx, semitone: noteNameToAbsoluteSemitone(name) }))
+                .filter(row => Number.isFinite(row.semitone));
             for (let i = 0; i < keys.length; i++) {
-                if (i < numRows) map[keys[i]] = numRows - 1 - i;
+                const absolute = rootIdx + i;
+                const targetSemitone = (4 * 12) + absolute;
+                let nearest = null;
+                playableRows.forEach(row => {
+                    const distance = Math.abs(row.semitone - targetSemitone);
+                    if (
+                        !nearest ||
+                        distance < nearest.distance ||
+                        (distance === nearest.distance && row.semitone < nearest.semitone)
+                    ) {
+                        nearest = { ...row, distance };
+                    }
+                });
+                if (nearest) map[keys[i]] = nearest.rowIdx;
             }
             return map;
         }
@@ -6573,6 +7332,12 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
         }
 
         const activeKeys = new Set();
+        function setKeyboardRowFeedback(track, rowIdx, isActive) {
+            const trackEl = track ? document.getElementById('track_' + track.id) : null;
+            const rowEl = trackEl?.querySelectorAll('.grid-row')[rowIdx];
+            if (rowEl) rowEl.classList.toggle('keyboard-active', !!isActive);
+        }
+
         window.addEventListener('keydown', (e) => {
             if (isFocusedOnInput() || e.repeat) return;
             if (e.code === 'Space') { e.preventDefault(); playBtn.click(); return; }
@@ -6590,15 +7355,16 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             if (map[key] !== undefined) {
                 const rowIdx = map[key];
                 if (audioCtx.state === 'suspended') audioCtx.resume();
+                if (track.typeId === 'drumSet') {
+                    triggerSamplerKeyboardPad(track, rowIdx, audioCtx.currentTime);
+                    if (track.grid[rowIdx]) recordNote(track, rowIdx);
+                    activeKeys.add(key);
+                    setKeyboardRowFeedback(track, rowIdx, true);
+                    return;
+                }
                 noteOn(track, rowIdx, audioCtx.currentTime, null, true);
                 activeKeys.add(key);
-
-                // Flash Label
-                const activeTrackEl = document.getElementById('track_' + track.id);
-                if (activeTrackEl) {
-                    const labelEl = activeTrackEl.querySelectorAll('.grid-row')[rowIdx]?.querySelector('.row-label');
-                    if (labelEl) { labelEl.classList.add('flash'); setTimeout(() => labelEl.classList.remove('flash'), 100); }
-                }
+                setKeyboardRowFeedback(track, rowIdx, true);
 
                 recordNote(track, rowIdx);
             }
@@ -6610,7 +7376,14 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             const map = getKeyboardMap();
             if (map[key] !== undefined) {
                 const track = state.tracks[state.activeTrackId];
+                if (track?.typeId === 'drumSet') {
+                    if (track.grid[map[key]]) recordNote(track, map[key], false);
+                    setKeyboardRowFeedback(track, map[key], false);
+                    activeKeys.delete(key);
+                    return;
+                }
                 if (track) noteOff(track, map[key], audioCtx.currentTime);
+                if (track) setKeyboardRowFeedback(track, map[key], false);
                 activeKeys.delete(key);
             }
         });
@@ -6774,10 +7547,12 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             renderBeatCounter();
         };
 
-        function changeScale() {
-            const oldRows = [...instrumentTypes.synthwave.rows];
+        function changeScale(previousKey = state._lastGlobalKey || state.globalKey, previousScale = state._lastGlobalScale || state.globalScale) {
+            const previousRootIdx = noteNames.indexOf(previousKey);
+            const oldRows = previousRootIdx >= 0 ? getScaleRows(previousRootIdx, previousScale) : [...instrumentTypes.synthwave.rows];
             updateInstrumentRows();
             const newRows = instrumentTypes.synthwave.rows;
+            const preserveRowPositions = previousScale === state.globalScale && oldRows.length === newRows.length;
 
             state.tracks.forEach(t => {
                 if (instrumentTypes[t.typeId].type !== 'drum') {
@@ -6785,17 +7560,20 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                     const newRowsLength = newRows.length;
                     const newGrid = Array(newRowsLength).fill().map(() => Array(256).fill(false));
 
-                    // Attempt to migrate notes by matching row names
+                    // Key changes should transpose the roll by keeping scale-degree row positions.
                     newRows.forEach((newName, newIdx) => {
-                        const oldIdx = oldRows.indexOf(newName);
+                        const oldIdx = preserveRowPositions ? newIdx : oldRows.indexOf(newName);
                         if (oldIdx !== -1 && oldGrid[oldIdx]) {
                             newGrid[newIdx] = oldGrid[oldIdx];
                         }
                     });
 
                     t.grid = newGrid;
+                    trackElementCache.delete(t.id);
                 }
             });
+            state._lastGlobalKey = state.globalKey;
+            state._lastGlobalScale = state.globalScale;
             renderTracks();
         }
 
@@ -6819,8 +7597,8 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             scaleInput.appendChild(opt);
         });
 
-        keyInput.onchange = (e) => { pushUndo(); state.globalKey = e.target.value; changeScale(); };
-        scaleInput.onchange = (e) => { pushUndo(); state.globalScale = e.target.value; changeScale(); };
+        keyInput.onchange = (e) => { pushUndo(); const previousKey = state.globalKey; const previousScale = state.globalScale; state.globalKey = e.target.value; changeScale(previousKey, previousScale); };
+        scaleInput.onchange = (e) => { pushUndo(); const previousKey = state.globalKey; const previousScale = state.globalScale; state.globalScale = e.target.value; changeScale(previousKey, previousScale); };
 
         // --- Drawer Visuals & UI ---
 
@@ -7442,13 +8220,15 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                     subdiv: t.subdiv,
                     octaveOffset: t.octaveOffset,
                     loopMultiplier: t.loopMultiplier || 1,
+                    rowDrums: t.rowDrums ? [...t.rowDrums] : [],
+                    rowStyles: t.rowStyles ? [...t.rowStyles] : [],
                     grid: JSON.parse(JSON.stringify(t.grid)),
                     adsr: t.adsr ? { ...t.adsr } : null,
                     sidechainEnabled: t.sidechainEnabled,
                     xy: t.xy ? { ...t.xy } : { x: 0.8, y: 0.2 },
                     audioRoute: t.audioRoute || 'master',
                     mixerGain: t.mixerGain ?? 0.75,
-                    modLinks: t.modLinks ? { ...t.modLinks } : { x: null, y: null, decay: null, adsr: null, wobble: null },
+                    modLinks: t.modLinks ? { ...t.modLinks } : { x: null, y: null, decay: null, sustain: null, adsr: null, wobble: null },
                     midiDoublingTargetId: t.midiDoublingTargetId || null,
                     wobbleRate: t.wobbleRate || 0,
                     voiceLfoEnabled: !!t.voiceLfoEnabled,
@@ -7524,6 +8304,8 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                     newTrack.subdiv = trackData.subdiv;
                     newTrack.octaveOffset = trackData.octaveOffset;
                     newTrack.loopMultiplier = trackData.loopMultiplier || 1;
+                    if (trackData.rowDrums) newTrack.rowDrums = trackData.rowDrums.map(normalizeDrumType);
+                    if (trackData.rowStyles) newTrack.rowStyles = [...trackData.rowStyles];
                     newTrack.grid = trackData.grid;
                     if (trackData.adsr) newTrack.adsr = trackData.adsr;
                     newTrack.sidechainEnabled = trackData.sidechainEnabled;
@@ -7531,7 +8313,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                     newTrack.audioRoute = trackData.audioRoute || 'master';
                     newTrack.mixerGain = trackData.mixerGain ?? newTrack.mixerGain ?? 0.75;
                     if (newTrack.mixerGainNode) newTrack.mixerGainNode.gain.value = newTrack.mixerGain;
-                    newTrack.modLinks = trackData.modLinks || { x: null, y: null, decay: null, adsr: null, wobble: null };
+                    newTrack.modLinks = { x: null, y: null, decay: null, sustain: null, adsr: null, wobble: null, ...(trackData.modLinks || {}) };
                     newTrack.midiDoublingTargetId = trackData.midiDoublingTargetId || null;
                     newTrack.wobbleRate = trackData.wobbleRate || (state.bpm / 60) * 2;
                     newTrack.voiceLfoEnabled = typeof trackData.voiceLfoEnabled === 'boolean' ? trackData.voiceLfoEnabled : newTrack.voiceLfoEnabled;
