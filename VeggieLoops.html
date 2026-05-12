@@ -23,6 +23,7 @@
             --accent-yellow: #ffea00;
             --text-main: #e0e0e6;
             --text-dim: #828793;
+            --control-label: #9aa1ad;
             --font-main: 'Inter', sans-serif;
             --font-mono: 'JetBrains Mono', monospace;
             --radius-md: 6px;
@@ -194,7 +195,7 @@
 
         .label {
             font-size: 0.62rem;
-            color: #8d92a0;
+            color: var(--control-label);
             text-transform: uppercase;
             font-weight: 600;
             margin-right: 3px;
@@ -488,17 +489,34 @@
             white-space: nowrap;
         }
 
-        .row-label[data-note-kind]::before {
-            content: '';
+        .row-label-note-marker {
             width: 6px;
             height: 70%;
             border-radius: 1px;
-            flex: 0 0 6px;
+            align-self: center;
+            justify-self: start;
+            box-sizing: border-box;
             background: rgba(255, 255, 255, 0.7);
             border: 1px solid rgba(255, 255, 255, 0.25);
         }
 
-        .row-label[data-note-kind="sharp"]::before {
+        .row-label[data-note-kind] {
+            display: grid;
+            grid-template-columns: 6px minmax(0, 1fr);
+            column-gap: 4px;
+            justify-content: start;
+            text-align: left;
+            padding-left: 4px;
+            padding-right: 0;
+        }
+
+        .row-label-text {
+            overflow: hidden;
+            text-overflow: clip;
+            white-space: nowrap;
+        }
+
+        .row-label[data-note-kind="sharp"] .row-label-note-marker {
             background: #050507;
             border-color: rgba(255, 255, 255, 0.18);
         }
@@ -622,6 +640,48 @@
             align-items: center;
         }
 
+        .fx-panel-header {
+            display: grid;
+            grid-template-columns: 18px 12px minmax(58px, 1fr) 20px auto 12px;
+            column-gap: 5px;
+            padding: 4px 5px;
+            align-items: center;
+        }
+
+        .fx-panel-header .patch-point {
+            width: 10px;
+            height: 10px;
+            justify-self: center;
+            flex: 0 0 10px;
+            background: radial-gradient(circle at 50% 50%, #020204 0 38%, #111 40% 100%);
+            box-shadow: inset 0 0 0 2px #050507, 0 0 0 1px rgba(255, 255, 255, 0.06);
+        }
+
+        .fx-panel-header .patch-point:hover,
+        .fx-panel-header .patch-point.active {
+            box-shadow: inset 0 0 0 2px #050507, 0 0 8px var(--plug-color);
+        }
+
+        .fx-panel-header .fx-type-select {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .fx-reset-btn {
+            width: 20px;
+            height: 18px;
+            padding: 0;
+            display: inline-grid;
+            place-items: center;
+        }
+
+        .fx-panel-index {
+            color: var(--text-dim);
+            font-size: 0.5rem;
+            justify-self: end;
+            white-space: nowrap;
+        }
+
         .panel-content {
             position: relative;
             height: 100px;
@@ -679,11 +739,15 @@
         }
 
         .sampler-keys {
+            --sampler-keyboard-width: 358px;
+            --sampler-keyboard-height: 56px;
             display: grid;
             grid-template-columns: repeat(21, minmax(0, 1fr));
             grid-template-rows: repeat(2, minmax(0, 1fr));
-            height: 44px;
-            width: 100%;
+            height: var(--sampler-keyboard-height);
+            width: var(--sampler-keyboard-width);
+            flex: 0 0 var(--sampler-keyboard-height);
+            align-self: flex-start;
             padding: 3px;
             gap: 3px;
             border: 1px solid rgba(255, 255, 255, 0.14);
@@ -694,23 +758,23 @@
         }
 
         .track[data-type-id="drumSet"] .sampler-keys {
-            height: 58px;
+            height: var(--sampler-keyboard-height);
         }
 
         .track[data-type-id="drumSet"] .sampler-canvas {
-            height: 82px;
+            height: 72px;
         }
 
         .track[data-type-id="drumSet"] .sampler-preview-pane {
-            flex: 0 0 clamp(300px, 24vw, 360px);
-            width: clamp(300px, 24vw, 360px);
+            flex: 0 0 358px;
+            width: 358px;
             max-width: none;
         }
 
         .sampler-preview-pane {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 10px;
             flex: 0 0 clamp(270px, 24vw, 340px);
             width: clamp(270px, 24vw, 340px);
             max-width: 50%;
@@ -750,10 +814,18 @@
         }
 
         .mpc-key.active {
-            background: linear-gradient(180deg, var(--accent-pink) 0%, #a800ff 100%);
-            border-color: rgba(255, 255, 255, 0.6);
-            box-shadow: 0 0 12px rgba(255, 0, 127, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            background: var(--accent-cyan);
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 15px var(--accent-cyan), inset 0 1px 0 rgba(255, 255, 255, 0.3);
             transform: translateY(1px);
+            transition: transform 0.05s ease, filter 0.08s ease, box-shadow 0.08s ease;
+        }
+
+        .mpc-key.active .computer-key-label,
+        .mpc-key.black.active .computer-key-label,
+        .mpc-key.white.active .computer-key-label {
+            color: #000;
+            text-shadow: none;
         }
 
         .adsr-label {
@@ -815,6 +887,7 @@
             font-size: 0.5rem;
             font-weight: 800;
             line-height: 1;
+            color: var(--control-label);
         }
 
         .xy-mod-row .patch-point {
@@ -831,6 +904,33 @@
         .drawer-panel {
             flex-shrink: 0;
             margin-bottom: 8px;
+        }
+
+        .drawer-routing-row {
+            display: grid;
+            grid-template-columns: 8px minmax(0, 1fr) 8px;
+            align-items: center;
+            width: 100%;
+            gap: 6px;
+            padding-bottom: 4px;
+            margin-bottom: 4px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            box-sizing: border-box;
+            min-width: 0;
+        }
+
+        .drawer-routing-row .patch-point {
+            justify-self: center;
+            margin: 0;
+            flex: 0 0 8px;
+        }
+
+        .drawer-routing-center {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            min-width: 0;
+            overflow: hidden;
         }
 
         /* --- Patching System --- */
@@ -953,7 +1053,7 @@
         }
 
         .header-item label {
-            color: var(--text-dim);
+            color: var(--control-label);
             font-weight: 700;
             text-transform: uppercase;
         }
@@ -974,6 +1074,8 @@
             flex-shrink: 0;
             display: block;
             box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+            cursor: crosshair;
+            touch-action: none;
         }
 
         .adsr-knobs {
@@ -992,19 +1094,39 @@
         }
 
         .adsr-mod-row {
-            display: flex;
+            display: grid;
+            grid-template-rows: 8px 8px;
             align-items: center;
-            justify-content: center;
-            gap: 3px;
-            height: 10px;
+            justify-items: center;
+            gap: 1px;
+            height: 18px;
             min-width: 28px;
         }
 
+        .adsr-mod-slot {
+            width: 8px;
+            height: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .adsr-mod-slot:empty {
+            visibility: hidden;
+        }
+
+        .adsr-mod-slot .patch-point {
+            margin: 0;
+            transform: translateY(-3px);
+        }
+
         .knob-label-adsr {
+            width: 100%;
+            text-align: center;
             font-size: 0.45rem;
             font-family: var(--font-mono);
-            color: var(--text-dim);
-            letter-spacing: 0.05em;
+            color: var(--control-label);
+            letter-spacing: 0;
             line-height: 1;
         }
 
@@ -1061,13 +1183,14 @@
 
         .track[data-type-id="drumSet"] .label,
         .track[data-type-id="drumSet"] .knob-label-adsr {
-            color: #a1a7b3;
+            color: var(--control-label);
         }
 
         .track[data-type="synth"] .track-header {
-            min-height: 112px;
-            padding: 5px 8px 7px;
+            min-height: 132px;
+            padding: 5px 8px 3px;
             gap: 6px;
+            justify-content: space-between;
         }
 
         .melodic-control-row {
@@ -1075,7 +1198,7 @@
         }
 
         .melodic-module-row {
-            align-items: stretch;
+            align-items: flex-end;
             gap: 10px;
             min-height: 78px;
         }
@@ -1107,16 +1230,65 @@
             margin-left: 0;
             align-self: stretch;
             gap: 8px;
+            align-items: flex-end;
         }
 
         .track[data-type="synth"] .adsr-display {
-            width: 112px;
-            height: 56px;
+            width: 150px;
+            height: 76px;
             background: linear-gradient(180deg, #06070a 0%, #020305 100%);
         }
 
         .track[data-type="synth"] .adsr-knobs {
-            gap: 7px;
+            display: grid;
+            grid-template-columns: repeat(2, 38px);
+            grid-auto-rows: 45px;
+            gap: 6px 7px;
+            align-items: end;
+        }
+
+        .track[data-type="synth"] .adsr-knobs .knob-wrap {
+            min-width: 38px;
+            gap: 2px;
+        }
+
+        .track[data-type="synth"] .adsr-knobs .knob-wrap[data-adsr-key="a"],
+        .track[data-type="synth"] .adsr-knobs .knob-wrap[data-adsr-key="d"] {
+            transform: translateY(10px);
+        }
+
+        .track[data-type="synth"] .adsr-knobs .adsr-mod-row {
+            height: 17px;
+            grid-template-rows: 8px 7px;
+            gap: 2px;
+        }
+
+        .track[data-type="synth"] .adsr-knobs .adsr-mod-slot {
+            position: static;
+            transform: none;
+        }
+
+        .track[data-type="synth"] .adsr-knobs .knob {
+            width: 20px;
+            height: 20px;
+        }
+
+        .track[data-type="synth"] .adsr-knobs .knob-pip {
+            height: 6px;
+        }
+
+        .track[data-type="synth"] .adsr-knobs .knob-val {
+            width: 38px;
+            font-size: 0.5rem;
+            line-height: 1;
+            margin-top: 1px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .track[data-type="synth"] .adsr-knobs .knob-default-marker {
+            top: 1px;
+            transform-origin: center 9px;
         }
 
         .melodic-perf-group {
@@ -1468,7 +1640,7 @@
         .mixer-label {
             font-size: 0.34rem;
             font-family: var(--font-mono);
-            color: var(--text-dim);
+            color: var(--control-label);
             line-height: 1;
         }
 
@@ -2112,7 +2284,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 return { title: 'MOD OUT', text: 'Drag from here to send this modulator to a compatible input.' };
             }
             if (point.classList.contains('mod-in')) {
-                return { title: 'MOD IN', text: point.title || 'Receives modulation from a drawer or modulation output.' };
+                return { title: 'MOD IN', text: 'Receives modulation from a drawer or modulation output.' };
             }
             return null;
         }
@@ -3511,7 +3683,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 xyGroup.style.height = '64px';
                 xyGroup.style.marginLeft = '0';
                 xyGroup.querySelectorAll('.label').forEach(label => {
-                    label.style.color = '#9aa1ad';
+                    label.style.color = 'var(--control-label)';
                     label.style.opacity = '1';
                 });
                 const drumXyCanvas = xyGroup.querySelector('.xy-pad');
@@ -3577,7 +3749,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 if (currentBank === 'A' && typeof mcp2000_config !== 'undefined' && mcp2000_config.pads[i]) label = mcp2000_config.pads[i].label;
                 else if (currentBank === 'B' && typeof mcp2000_config_b !== 'undefined' && mcp2000_config_b.pads[i]) label = mcp2000_config_b.pads[i].label;
                 const padNum = document.createElement('span'); padNum.textContent = (i + 1).toString().padStart(2, '0'); padNum.style.opacity = '0.3'; padNum.style.marginBottom = '2px';
-                const padLabel = document.createElement('span'); padLabel.textContent = label.toUpperCase(); padLabel.style.cssText = `fontWeight:700; color:var(--accent-cyan); maxWidth:100%; overflow:hidden; text-overflow:ellipsis;`;
+                const padLabel = document.createElement('span'); padLabel.className = 'sampler-pad-label'; padLabel.textContent = label.toUpperCase(); padLabel.style.cssText = `fontWeight:700; color:var(--control-label); maxWidth:100%; overflow:hidden; text-overflow:ellipsis;`;
                 pad.append(padNum, padLabel);
                 pad.onmousedown = (e) => {
                     e.stopPropagation(); pad.style.background = 'var(--accent-cyan)'; padLabel.style.color = '#000'; pad.style.transform = 'translateY(1px)'; pad.style.boxShadow = '0 0 15px var(--accent-cyan)';
@@ -3643,8 +3815,8 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             const dials = document.createElement('div'); dials.style.cssText = 'display:flex; gap:12px; align-items:center;';
             const createDial = (label, prop, min, max, step) => {
                 const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex; align-items:center; gap:4px; background:rgba(255,255,255,0.03); padding:2px 6px; border-radius:4px; border:1px solid var(--glass-border);';
-                const lab = document.createElement('span'); lab.textContent = label; lab.style.cssText = 'font-size:0.5rem; font-weight:800; color:var(--text-dim);';
-                const inp = document.createElement('input'); inp.type = 'range'; inp.min = min; inp.max = max; inp.step = step; inp.value = track[prop] || 1.0; inp.style.width = '35px'; inp.oninput = (e) => { track[prop] = parseFloat(e.target.value); valLab.textContent = track[prop].toFixed(2); };
+                const lab = document.createElement('span'); lab.textContent = label; lab.style.cssText = 'font-size:0.5rem; font-weight:800; color:var(--control-label);';
+                const inp = document.createElement('input'); inp.type = 'range'; inp.min = min; inp.max = max; inp.step = step; inp.value = track[prop] || 1.0; inp.style.width = '35px'; inp.setAttribute('aria-label', label); inp.dataset.control = prop; inp.oninput = (e) => { track[prop] = parseFloat(e.target.value); valLab.textContent = track[prop].toFixed(2); };
                 const valLab = document.createElement('span'); valLab.textContent = (track[prop] || 1.0).toFixed(2); valLab.style.cssText = 'font-size:0.5rem; font-family:var(--font-mono); color:var(--accent-cyan); min-width:22px;';
                 wrap.append(lab, inp, valLab); return wrap;
             };
@@ -3665,7 +3837,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             midiHub.classList.add('drum-midi-box');
             midiHub.style.cssText = 'display:flex; align-items:center; justify-content:center; gap:8px; height:62px; min-width:92px; padding:10px 8px; background:linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018)); border:1px solid rgba(255,255,255,0.2); border-radius:5px; flex:0 0 auto;';
             const midiLabelEl = midiHub.querySelector('.label');
-            if (midiLabelEl) midiLabelEl.style.cssText = 'font-size:0.48rem; opacity:1; color:#9aa1ad; white-space:nowrap;';
+            if (midiLabelEl) midiLabelEl.style.cssText = 'font-size:0.48rem; opacity:1; color:var(--control-label); white-space:nowrap;';
 
             if (randGroup) {
                 randGroup.classList.add('drum-random-controls');
@@ -3823,7 +3995,9 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             if (!button) return;
             button.classList.toggle('is-minimized', !!isMinimized);
             button.setAttribute('aria-label', isMinimized ? 'Restore track' : 'Minimize track');
-            button.title = isMinimized ? 'Restore track' : 'Minimize track';
+            button.removeAttribute('title');
+            button.setAttribute('data-tooltip-title', isMinimized ? 'Restore Track' : 'Minimize Track');
+            button.setAttribute('data-tooltip', isMinimized ? 'Expand this instrument panel.' : 'Collapse this instrument panel while keeping its routing active.');
         }
 
         function prepareHeaderMidiHub(midiHub, track, compact = false) {
@@ -3861,17 +4035,16 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             strip.className = 'minimized-port-strip interactive-element';
             strip.onclick = (e) => e.stopPropagation();
             const ports = [
-                { label: 'Q', target: 'y', color: 'var(--accent-pink)' },
-                { label: 'F', target: 'x', color: 'var(--accent-cyan)' },
-                { label: 'W', target: 'wobble', color: 'var(--accent-yellow)' },
-                { label: 'S', target: 'sustain', color: 'var(--accent-purple)' },
-                { label: 'A/R', target: 'adsr', color: 'var(--accent-pink)' }
+                { target: 'y' },
+                { target: 'x' },
+                { target: 'wobble' },
+                { target: 'sustain' },
+                { target: 'adsr' }
             ];
-            ports.forEach(({ label, target, color }) => {
+            ports.forEach(({ target }) => {
                 const wrap = document.createElement('div');
                 wrap.className = 'minimized-port-wrap';
-                wrap.style.color = color;
-                wrap.append(document.createTextNode(label), createModPort(target, track));
+                wrap.append(createModPort(target, track));
                 strip.appendChild(wrap);
             });
             return strip;
@@ -4050,22 +4223,26 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 adsrCanvas.width = 120 * (window.devicePixelRatio || 1);
                 adsrCanvas.height = 60 * (window.devicePixelRatio || 1);
                 adsrCanvas.setAttribute('data-tooltip-title', 'ADSR Envelope');
-                adsrCanvas.setAttribute('data-tooltip', 'Attack: Fade in speed.\nDecay: Time to reach Sustain.\nSustain: Level while held.\nRelease: Fade out speed.');
+                adsrCanvas.setAttribute('data-tooltip', 'Attack: horizontal time only. Decay controls time and shares its height with Sustain. Sustain controls level. Release controls time.');
+                adsrCanvas.addEventListener('pointerdown', (e) => startADSRGraphDrag(e, adsrCanvas, track, index));
                 const knobsDef = [{ key: 'a', label: 'A', min: 0.005, max: 4.0 }, { key: 'd', label: 'D', min: 0.005, max: 4.0 }, { key: 's', label: 'S', min: 0.0, max: 1.0 }, { key: 'r', label: 'R', min: 0.005, max: 8.0 }];
                 const MIN_DEG = -135, MAX_DEG = 135;
                 const knobsRow = document.createElement('div'); knobsRow.className = 'adsr-knobs';
                 knobsDef.forEach(({ key, label, min, max }) => {
                     const wrap = document.createElement('div'); wrap.className = 'knob-wrap';
+                    wrap.dataset.adsrKey = key;
                     const modRow = document.createElement('div');
                     modRow.className = 'adsr-mod-row';
+                    const modSlot = document.createElement('div');
+                    modSlot.className = 'adsr-mod-slot';
                     const lbl = document.createElement('div');
                     lbl.className = 'knob-label-adsr';
-                    lbl.textContent = key === 'r' ? 'A/R' : label;
-                    modRow.appendChild(lbl);
+                    lbl.textContent = label;
                     if (track.typeId !== 'drumSet') {
-                        if (key === 'd') modRow.appendChild(createModPort('decay', track));
-                        if (key === 'r') modRow.appendChild(createModPort('adsr', track));
+                        if (key === 'a') modSlot.appendChild(createModPort('adsr', track));
+                        if (key === 'd') modSlot.appendChild(createModPort('decay', track));
                     }
+                    modRow.append(modSlot, lbl);
                     const knob = document.createElement('div'); knob.className = 'knob';
                     const pip = document.createElement('div'); pip.className = 'knob-pip'; knob.appendChild(pip);
                     const defaults = track.adsrDefaults || (instrumentTypes[track.typeId] ? instrumentTypes[track.typeId].adsr : null);
@@ -4086,9 +4263,9 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                         e.stopPropagation(); let startY = e.clientY; let startVal = track.adsr[key];
                         const onMove = (ev) => {
                             const dy = startY - ev.clientY; const delta = (dy / 160) * (max - min);
-                            track.adsr[key] = Math.max(min, Math.min(max, startVal + delta));
+                            setADSRParam(track, key, startVal + delta);
                             setRotation(track.adsr[key]);
-                            const cv = document.getElementById(`adsr_${track.id}`); if (cv) drawADSR(cv, track.adsr, track, state.activeTrackId === index);
+                            syncADSRControls(track);
                         };
                         const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
                         window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
@@ -4100,16 +4277,15 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                     adsrGraphRow.className = 'drum-adsr-graph-row';
                     const adsrModInputs = document.createElement('div');
                     adsrModInputs.className = 'xy-mod-inputs drum-adsr-mod-inputs';
-                    const createAdsrModWrap = (label, target, color) => {
+                    const createAdsrModWrap = (label, target) => {
                         const wrap = document.createElement('div');
                         wrap.className = 'xy-mod-row';
-                        wrap.style.color = color;
                         wrap.append(document.createTextNode(label), createModPort(target, track));
                         return wrap;
                     };
                     adsrModInputs.append(
-                        createAdsrModWrap('S', 'sustain', 'var(--accent-purple)'),
-                        createAdsrModWrap('A/R', 'adsr', 'var(--accent-pink)')
+                        createAdsrModWrap('S', 'sustain'),
+                        createAdsrModWrap('A/R', 'adsr')
                     );
                     adsrGraphRow.append(adsrModInputs, adsrCanvas);
                     adsrGroup.append(adsrGraphRow, knobsRow);
@@ -4155,9 +4331,13 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             }
 
             const loopGroup = document.createElement('div'); loopGroup.className = 'slider-group';
+            loopGroup.setAttribute('data-tooltip-title', 'Loop Multiplier');
+            loopGroup.setAttribute('data-tooltip', 'Sets how many bars this track pattern spans before repeating.');
             const multipliers = [1, 2, 3, 4, 8, 16];
             const loopSelect = document.createElement('select');
             loopSelect.dataset.control = 'track-loop';
+            loopSelect.setAttribute('data-tooltip-title', 'Loop Multiplier');
+            loopSelect.setAttribute('data-tooltip', 'Choose the track loop length multiplier, from 1x up to 16x.');
             loopSelect.style.cssText = 'width:45px; font-size:0.55rem; background:var(--surface); color:var(--text-main); border:1px solid var(--glass-border); border-radius:3px;';
             multipliers.forEach(m => {
                 const opt = document.createElement('option');
@@ -4185,6 +4365,8 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
 
             const subdivSelect = document.createElement('select');
             subdivSelect.dataset.control = 'track-subdiv';
+            subdivSelect.setAttribute('data-tooltip-title', 'Step Subdivision');
+            subdivSelect.setAttribute('data-tooltip', 'Choose the rhythmic grid resolution for this track, including straight, triplet, and dotted values.');
             subdivSelect.style.cssText = 'width:45px; font-size:0.55rem; background:var(--surface); color:var(--text-main); border:1px solid var(--glass-border); border-radius:3px;';
             const subdivOptions = [
                 { val: '0.25', text: '1/1' }, { val: '0.5', text: '1/2' }, { val: '1', text: '1/4' },
@@ -4200,21 +4382,33 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             });
 
             subdivSelect.onclick = (e) => e.stopPropagation();
-            subdivSelect.value = track.subdiv || 4; subdivSelect.onchange = (e) => { track.subdiv = parseFloat(e.target.value); renderTracks(); };
+            subdivSelect.value = track.subdiv || 4;
+            subdivSelect.onchange = (e) => {
+                const nextSubdiv = parseFloat(e.target.value);
+                if ((track.subdiv || 4) === nextSubdiv) return;
+                track.subdiv = nextSubdiv;
+                track.gridCells = null;
+                trackElementCache.delete(track.id);
+                renderTracks();
+            };
 
             const randStyleSelect = document.createElement('select'); randStyleSelect.style.cssText = 'width: 55px; font-size: 0.55rem;';
             ['Musical', 'Euclidean', 'Acid', 'Chaotic'].forEach(s => { const opt = document.createElement('option'); opt.value = s.toLowerCase(); opt.textContent = s; if ((track.randStyle || 'musical') === s.toLowerCase()) opt.selected = true; randStyleSelect.appendChild(opt); });
+            randStyleSelect.setAttribute('data-tooltip-title', 'Randomizer Style');
+            randStyleSelect.setAttribute('data-tooltip', 'Choose the pattern generation behavior: musical, Euclidean, acid, or chaotic.');
             randStyleSelect.onclick = (e) => e.stopPropagation();
             randStyleSelect.onchange = (e) => { track.randStyle = e.target.value; };
 
             const randModeBtn = document.createElement('button');
             randModeBtn.textContent = track.randMode === 'replace' ? 'REP' : 'ADD';
-            randModeBtn.title = "Randomization Mode: Replace current pattern or Add to it";
+            randModeBtn.setAttribute('data-tooltip-title', 'Randomization Mode');
+            randModeBtn.setAttribute('data-tooltip', 'Replace the current pattern or add new notes into it.');
             randModeBtn.onclick = () => { track.randMode = track.randMode === 'replace' ? 'add' : 'replace'; renderTracks(); };
 
             const loopRandBtn = document.createElement('button');
             loopRandBtn.textContent = '🔄';
-            loopRandBtn.title = "Randomize on Loop Restart: Create evolving melodies automatically";
+            loopRandBtn.setAttribute('data-tooltip-title', 'Randomize On Loop');
+            loopRandBtn.setAttribute('data-tooltip', 'Create evolving patterns automatically when the loop restarts.');
             if (track.randOnLoop) loopRandBtn.classList.add('active');
             loopRandBtn.onclick = () => { track.randOnLoop = !track.randOnLoop; renderTracks(); };
 
@@ -4243,8 +4437,10 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             gliSlider.value = track.randGliss || 0; gliSlider.style.cssText = 'height:3px; accent-color:var(--accent-pink);';
             gliSlider.oninput = (e) => { track.randGliss = parseFloat(e.target.value); };
 
-            const randBtn = document.createElement('button'); randBtn.textContent = '🎲'; randBtn.title = "GENERATE PATTERN";
-            randBtn.style.cssText = 'background:var(--accent-cyan); color:black; font-weight:bold; border:none; border-radius:3px; padding:2px 8px; cursor:pointer;';
+            const randBtn = document.createElement('button'); randBtn.textContent = '🎲';
+            randBtn.setAttribute('data-tooltip-title', 'Generate Pattern');
+            randBtn.setAttribute('data-tooltip', 'Generate a new sequence using the current randomizer settings.');
+            randBtn.style.cssText = 'background:linear-gradient(#111116,#111116) padding-box, linear-gradient(135deg, var(--accent-purple), var(--accent-cyan), var(--accent-pink)) border-box; color:var(--accent-cyan); font-weight:bold; border:1px solid transparent; border-radius:4px; padding:2px 8px; cursor:pointer; box-shadow:0 0 9px rgba(0,242,255,0.18), 0 0 7px rgba(180,0,255,0.18); text-shadow:0 0 6px rgba(0,242,255,0.7);';
             randBtn.onclick = () => {
                 randomizeTrack(track);
                 autoSpawnTrackIfNeeded();
@@ -4252,10 +4448,15 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             };
 
             const fillBtn = document.createElement('button');
-            fillBtn.textContent = '♾️'; fillBtn.title = "Fill the Roll: Repeat 1st measure pattern across the loop";
+            fillBtn.textContent = '♾️';
+            fillBtn.setAttribute('data-tooltip-title', 'Fill The Roll');
+            fillBtn.setAttribute('data-tooltip', 'Repeat the first measure pattern across the full loop.');
             fillBtn.onclick = () => { fillTrackPattern(track); updateTrackGrid(track); };
 
-            const clearBtn = document.createElement('button'); clearBtn.textContent = '✕'; clearBtn.style.color = 'var(--accent-pink)'; clearBtn.onclick = () => { pushUndo(); track.grid.forEach(row => row.fill(false)); updateTrackGrid(track); };
+            const clearBtn = document.createElement('button'); clearBtn.textContent = '✕'; clearBtn.style.color = 'var(--accent-pink)';
+            clearBtn.setAttribute('data-tooltip-title', 'Clear Pattern');
+            clearBtn.setAttribute('data-tooltip', 'Remove all notes from this track piano roll.');
+            clearBtn.onclick = () => { pushUndo(); track.grid.forEach(row => row.fill(false)); updateTrackGrid(track); };
 
             const randGroup = document.createElement('div');
             randGroup.className = 'random-controls';
@@ -4288,7 +4489,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
 
             const randTop = document.createElement('div');
             randTop.style.cssText = 'display:flex; align-items:center; gap:6px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:4px;';
-            randTop.append(randStyleSelect, randModeBtn, loopRandBtn, randBtn, fillBtn, clearBtn);
+            randTop.append(fillBtn, randStyleSelect, randModeBtn, loopRandBtn, randBtn, clearBtn);
 
             const midiHub = document.createElement('div');
             midiHub.className = 'midi-hub';
@@ -4316,17 +4517,17 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                     wrap.setAttribute('data-tooltip', helpText);
                 }
                 const lbl = document.createElement('span'); lbl.className = 'label'; lbl.textContent = labelStr;
-                lbl.style.cssText = `font-size:0.45rem; color:${color}; opacity:0.8; width:30px;`;
+                lbl.style.cssText = 'font-size:0.45rem; color:var(--control-label); opacity:1; width:30px;';
                 slider.style.width = '50px';
                 wrap.append(lbl, slider);
                 return wrap;
             }
 
-            randGrid.append(renderSlider('DENS', densSlider, 'var(--accent-cyan)'));
-            randGrid.append(renderSlider('SPRD', spreadSlider, 'var(--accent-pink)'));
-            if (template.type !== 'drum') randGrid.append(renderSlider('LEN', lenSlider, 'var(--accent-yellow)'));
-            randGrid.append(renderSlider('JITR', jitSlider, 'var(--accent-cyan)'));
-            if (template.type !== 'drum') randGrid.append(renderSlider('GLIS', gliSlider, 'var(--accent-pink)'));
+            randGrid.append(renderSlider('DENS', densSlider, 'var(--accent-cyan)', 'Controls how many notes the randomizer places in the pattern.'));
+            randGrid.append(renderSlider('SPRD', spreadSlider, 'var(--accent-pink)', 'Spreads generated notes across more lanes, pitches, or drum rows.'));
+            if (template.type !== 'drum') randGrid.append(renderSlider('LEN', lenSlider, 'var(--accent-yellow)', 'Sets the generated melodic note length. Higher values create longer held notes.'));
+            randGrid.append(renderSlider('JITR', jitSlider, 'var(--accent-cyan)', 'Adds timing variation so generated notes feel less rigid.'));
+            if (template.type !== 'drum') randGrid.append(renderSlider('GLIS', gliSlider, 'var(--accent-pink)', 'Adds stepped pitch slides between generated melodic notes.'));
 
             randGroup.append(randTop, randGrid);
 
@@ -4347,17 +4548,6 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 glideBtn.onclick = () => { track.glide = !track.glide; renderTracks(); };
                 glideTop.appendChild(glideBtn);
 
-                const glissBtn = document.createElement('button');
-                glissBtn.textContent = 'STEP';
-                glissBtn.className = `glide-btn ${track.glideMode === 'glissando' ? 'active' : ''}`;
-                glissBtn.style.cssText = 'font-size:0.45rem; padding:1px 6px; height:16px; line-height:12px; margin-left:3px; flex:1;';
-                glissBtn.setAttribute('data-tooltip', 'Glissando mode: frequency slides in semitone steps.');
-                glissBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    track.glideMode = track.glideMode === 'glissando' ? 'portamento' : 'glissando';
-                    renderTracks();
-                };
-                glideTop.appendChild(glissBtn);
                 const glideSlider = document.createElement('input');
                 glideSlider.type = 'range'; glideSlider.min = '0'; glideSlider.max = '0.5'; glideSlider.step = '0.01';
                 glideSlider.dataset.control = 'track-glide-time';
@@ -4481,16 +4671,15 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             filterGroup.append(filterLabel, filterSelect);
 
             const modInputs = document.createElement('div'); modInputs.className = 'xy-mod-inputs';
-            const createXyModWrap = (label, target, color) => {
+            const createXyModWrap = (label, target) => {
                 const wrap = document.createElement('div');
                 wrap.className = 'xy-mod-row';
-                wrap.style.color = color;
                 wrap.append(document.createTextNode(label), createModPort(target, track));
                 return wrap;
             };
-            const qWrap = createXyModWrap('Q', 'y', 'var(--accent-pink)');
-            const fWrap = createXyModWrap('F', 'x', 'var(--accent-cyan)');
-            const wWrap = createXyModWrap('W', 'wobble', 'var(--accent-yellow)');
+            const qWrap = createXyModWrap('Q', 'y');
+            const fWrap = createXyModWrap('F', 'x');
+            const wWrap = createXyModWrap('W', 'wobble');
             modInputs.append(qWrap, fWrap, wWrap);
             xyGroup.append(modInputs, xyCont, filterGroup);
 
@@ -4529,8 +4718,8 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                         const adsrCanvas = adsrGroup.querySelector('.adsr-display');
                         if (adsrCanvas) {
                             const dpr = window.devicePixelRatio || 1;
-                            adsrCanvas.width = 112 * dpr;
-                            adsrCanvas.height = 56 * dpr;
+                            adsrCanvas.width = 150 * dpr;
+                            adsrCanvas.height = 76 * dpr;
                         }
                     }
                     if (isMelodicPanel) {
@@ -4575,8 +4764,19 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 template.rows.forEach((rowName, rIdx) => {
                     const rowEl = document.createElement('div'); rowEl.className = 'grid-row';
                     track.gridCells[rIdx] = [];
-                    const label = document.createElement('div'); label.className = 'row-label'; label.textContent = template.type === 'synth' ? formatPianoRollRowLabel(rowName) : rowName;
-                    if (template.type === 'synth') label.dataset.noteKind = rowName.includes('#') ? 'sharp' : 'natural';
+                    const label = document.createElement('div'); label.className = 'row-label';
+                    if (template.type === 'synth') {
+                        label.dataset.noteKind = rowName.includes('#') ? 'sharp' : 'natural';
+                        const noteMarker = document.createElement('span');
+                        noteMarker.className = 'row-label-note-marker';
+                        noteMarker.setAttribute('aria-hidden', 'true');
+                        const noteText = document.createElement('span');
+                        noteText.className = 'row-label-text';
+                        noteText.textContent = formatPianoRollRowLabel(rowName);
+                        label.append(noteMarker, noteText);
+                    } else {
+                        label.textContent = rowName;
+                    }
                     label.onmousedown = (e) => { e.preventDefault(); noteOn(track, rIdx, audioCtx.currentTime); const up = () => { noteOff(track, rIdx, audioCtx.currentTime); window.removeEventListener('mouseup', up); }; window.addEventListener('mouseup', up); };
                     if (template.type !== 'drum') rowEl.appendChild(label);
                     if (template.type === 'drum') {
@@ -4612,7 +4812,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
 
                         const variantSelect = document.createElement('select');
                         variantSelect.setAttribute('aria-label', `Drum variant for row ${rIdx + 1}`);
-                        variantSelect.style.cssText = 'font-size:0.48rem; width:56px; background:#111116; border:1px solid rgba(255,255,255,0.08); color:var(--accent-cyan); border-radius:2px;';
+                        variantSelect.style.cssText = 'font-size:0.48rem; width:56px; background:#111116; border:1px solid rgba(255,255,255,0.08); color:var(--control-label); border-radius:2px;';
                         const populateVariants = () => {
                             const drumName = drumSelect.value;
                             const variants = drumStyles[drumName] || ['Default'];
@@ -4678,7 +4878,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
         }
 
         function createModPort(target, track) {
-            const mod = document.createElement('div'); mod.className = `patch-point mod-in ${track.modLinks[target] ? 'active' : ''}`; mod.id = `mod_${target}_${track.id}`; mod.title = `Modulate ${target}`;
+            const mod = document.createElement('div'); mod.className = `patch-point mod-in ${track.modLinks[target] ? 'active' : ''}`; mod.id = `mod_${target}_${track.id}`;
             mod.onmousedown = (e) => e.stopPropagation();
             return mod;
         }
@@ -4926,11 +5126,24 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 });
 
                 const panelHeader = document.createElement('div');
-                panelHeader.className = 'panel-header';
-                panelHeader.style.cssText = 'justify-content: flex-start; gap: 8px; border-bottom: 1px solid var(--glass-border); cursor:pointer;';
+                panelHeader.className = 'panel-header fx-panel-header';
+                panelHeader.style.cssText = 'border-bottom: 1px solid var(--glass-border); cursor:pointer;';
 
                 panel.ondblclick = (e) => {
-                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.classList.contains('patch-point')) return;
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'BUTTON' || e.target.classList.contains('patch-point')) return;
+                    unit.minimized = !unit.minimized;
+                    renderFxPanels();
+                };
+
+                const fxMinBtn = document.createElement('button');
+                fxMinBtn.type = 'button';
+                fxMinBtn.className = 'track-min-btn';
+                fxMinBtn.classList.toggle('is-minimized', !!unit.minimized);
+                fxMinBtn.setAttribute('aria-label', unit.minimized ? 'Restore FX pedal' : 'Minimize FX pedal');
+                fxMinBtn.setAttribute('data-tooltip-title', unit.minimized ? 'Restore FX Pedal' : 'Minimize FX Pedal');
+                fxMinBtn.setAttribute('data-tooltip', unit.minimized ? 'Expand this FX pedal to show its controls.' : 'Collapse this FX pedal while keeping its audio routing active.');
+                fxMinBtn.onclick = (e) => {
+                    e.stopPropagation();
                     unit.minimized = !unit.minimized;
                     renderFxPanels();
                 };
@@ -4938,7 +5151,6 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 const patchIn = document.createElement('div');
                 patchIn.className = 'patch-point audio-in';
                 patchIn.id = `audio_in_${unit.id}`;
-                patchIn.title = "Wire track output here";
                 patchIn.style.borderColor = 'var(--accent-purple)';
                 patchIn.setAttribute('data-tooltip-title', 'FX Input');
                 patchIn.setAttribute('data-tooltip', 'Drop an instrument or another FX pedal output here.');
@@ -4946,7 +5158,6 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 const patchOut = document.createElement('div');
                 patchOut.className = `patch-point audio-out ${unit.audioRoute !== 'master' ? 'active' : ''}`;
                 patchOut.id = `audio_out_${unit.id}`;
-                patchOut.title = "Wire FX output to another pedal";
                 patchOut.style.borderColor = 'var(--accent-cyan)';
                 patchOut.setAttribute('data-tooltip-title', 'FX Output');
                 patchOut.setAttribute('data-tooltip', 'Drag to another FX input to chain pedals. Drop elsewhere to send this pedal back to MASTER OUT.');
@@ -4965,15 +5176,18 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 };
 
                 const spanIdx = document.createElement('span');
-                spanIdx.style.cssText = 'margin-left:auto; color:var(--text-dim); font-size:0.5rem;';
+                spanIdx.className = 'fx-panel-index';
                 spanIdx.textContent = `#${idx + 1}`;
 
                 const resetBtn = document.createElement('button');
-                resetBtn.textContent = '↺'; resetBtn.className = 'btn'; resetBtn.style.padding = '2px 4px'; resetBtn.title = 'Reset Defaults';
+                resetBtn.textContent = '↺'; resetBtn.className = 'btn fx-reset-btn';
+                resetBtn.setAttribute('data-tooltip-title', 'Reset Defaults');
+                resetBtn.setAttribute('data-tooltip', 'Restore this FX pedal parameters to their defaults.');
                 resetBtn.onclick = (e) => { e.stopPropagation(); unit.params = JSON.parse(JSON.stringify(fxDefaults[unit.type] || {})); renderFxPanels(); updateFxParams(unit, panel); };
 
                 typeSelect.onclick = (e) => e.stopPropagation();
                 typeSelect.ondblclick = (e) => e.stopPropagation();
+                panelHeader.appendChild(fxMinBtn);
                 panelHeader.appendChild(patchIn);
                 panelHeader.appendChild(typeSelect);
                 panelHeader.appendChild(resetBtn);
@@ -5087,7 +5301,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                     syncRow.style.marginTop = '4px';
 
                     const labelSync = document.createElement('label');
-                    labelSync.style.cssText = 'font-family:var(--font-mono); font-size:0.6rem; color:var(--text-dim); display:flex; align-items:center; gap:8px; cursor:pointer;';
+                    labelSync.style.cssText = 'font-family:var(--font-mono); font-size:0.6rem; color:var(--control-label); display:flex; align-items:center; gap:8px; cursor:pointer;';
 
                     const syncChk = document.createElement('input');
                     syncChk.type = 'checkbox';
@@ -5153,7 +5367,6 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                     }
                 }
 
-                panel.appendChild(controlsCont);
                 container.appendChild(panel);
             });
 
@@ -5306,7 +5519,8 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                     if (e.shiftKey) saveScene(i);
                     else loadScene(i);
                 };
-                btn.title = "Click to Load, Shift+Click to Save";
+                btn.setAttribute('data-tooltip-title', `Scene ${i + 1}`);
+                btn.setAttribute('data-tooltip', 'Click to load this scene. Shift-click to save the current state here.');
                 cont.appendChild(btn);
             }
         }
@@ -6068,70 +6282,255 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
         }
         window.addEventListener('resize', updateFixedCables);
 
+        const ADSR_PARAM_RANGES = {
+            a: { min: 0.005, max: 4.0 },
+            d: { min: 0.005, max: 4.0 },
+            s: { min: 0.0, max: 1.0 },
+            r: { min: 0.005, max: 8.0 }
+        };
+        const ADSR_NODE_MIN_GAP = 0.005;
+        const ADSR_TIME_LOG_CURVE = 0.08;
+        const ADSR_SOFTEN_SECONDS = 0.008;
+        const ADSR_MIN_DEG = -135;
+        const ADSR_MAX_DEG = 135;
+
+        function clampValue(value, min, max) {
+            return Math.max(min, Math.min(max, value));
+        }
+
+        function getADSRGateBeats(track) {
+            return track ? (1.0 / (track.subdiv || 4)) : 0.25;
+        }
+
+        function getADSRSustainFromY(y, geometry) {
+            return clampValue(1 - ((y - geometry.peakY) / Math.max(1, geometry.bottomY - geometry.peakY)), ADSR_PARAM_RANGES.s.min, ADSR_PARAM_RANGES.s.max);
+        }
+
+        function getADSRYFromSustain(sustain, geometry) {
+            return geometry.bottomY - (sustain * (geometry.bottomY - geometry.peakY));
+        }
+
+        function normalizeADSR(track) {
+            const adsr = track?.adsr;
+            if (!adsr) return null;
+            Object.keys(ADSR_PARAM_RANGES).forEach(key => {
+                const range = ADSR_PARAM_RANGES[key];
+                adsr[key] = clampValue(Number.isFinite(adsr[key]) ? adsr[key] : range.min, range.min, range.max);
+            });
+
+            const gateBeats = getADSRGateBeats(track);
+            const releaseMin = Math.max(ADSR_PARAM_RANGES.r.min, adsr.a + adsr.d - gateBeats + ADSR_NODE_MIN_GAP);
+            if (releaseMin > ADSR_PARAM_RANGES.r.max) {
+                adsr.d = Math.max(ADSR_PARAM_RANGES.d.min, gateBeats + ADSR_PARAM_RANGES.r.max - adsr.a - ADSR_NODE_MIN_GAP);
+            } else if (adsr.r < releaseMin) {
+                adsr.r = releaseMin;
+            }
+            return adsr;
+        }
+
+        function setADSRParam(track, key, value) {
+            if (!track?.adsr || !ADSR_PARAM_RANGES[key]) return;
+            const range = ADSR_PARAM_RANGES[key];
+            track.adsr[key] = clampValue(value, range.min, range.max);
+            normalizeADSR(track);
+        }
+
+        function getADSREnvelopeSeconds(adsr, beatDur, peak = 1.0) {
+            return {
+                a: Math.max(ADSR_SOFTEN_SECONDS, (adsr?.a || 0) * beatDur),
+                d: Math.max(ADSR_SOFTEN_SECONDS, (adsr?.d || 0) * beatDur),
+                s: clampValue(adsr?.s ?? 0, ADSR_PARAM_RANGES.s.min, ADSR_PARAM_RANGES.s.max) * peak,
+                r: Math.max(ADSR_SOFTEN_SECONDS, (adsr?.r || 0) * beatDur)
+            };
+        }
+
+        function getADSRGraphGeometry(canvas, adsr, track = null) {
+            const w = canvas.offsetWidth;
+            const h = canvas.offsetHeight;
+            const gateBeats = getADSRGateBeats(track);
+            const envelopeEnd = Math.max(gateBeats + adsr.r, adsr.a + adsr.d + ADSR_NODE_MIN_GAP);
+            const maxBeats = Math.max(1.0, Math.min(ADSR_PARAM_RANGES.r.max + gateBeats, envelopeEnd * 1.2));
+            const logDenom = Math.log1p(maxBeats / ADSR_TIME_LOG_CURVE);
+            const peakY = 4;
+            const bottomY = h - 4;
+            const sustainY = getADSRYFromSustain(adsr.s, { peakY, bottomY });
+            const beatToPx = (b) => {
+                const clampedBeat = clampValue(b, 0, maxBeats);
+                return (Math.log1p(clampedBeat / ADSR_TIME_LOG_CURVE) / logDenom) * w;
+            };
+            return {
+                w, h, gateBeats, maxBeats, peakY, bottomY, sustainY,
+                beatToPx,
+                pxToBeat: (x) => ADSR_TIME_LOG_CURVE * Math.expm1((clampValue(x, 0, w) / Math.max(1, w)) * logDenom)
+            };
+        }
+
+        function getADSRHandlePoints(canvas, track) {
+            normalizeADSR(track);
+            const adsr = track.adsr;
+            const g = getADSRGraphGeometry(canvas, adsr, track);
+            const handles = [];
+            if (g.gateBeats < adsr.a) {
+                handles.push({
+                    key: 'a',
+                    x: g.beatToPx(g.gateBeats),
+                    y: g.bottomY - (g.gateBeats / Math.max(ADSR_PARAM_RANGES.a.min, adsr.a)) * (g.bottomY - g.peakY)
+                });
+            } else {
+                handles.push({ key: 'a', x: g.beatToPx(adsr.a), y: g.peakY });
+                if (g.gateBeats < adsr.a + adsr.d) {
+                    const decayProgress = (g.gateBeats - adsr.a) / Math.max(ADSR_PARAM_RANGES.d.min, adsr.d);
+                    const y = g.peakY + (g.sustainY - g.peakY) * decayProgress;
+                    handles.push({ key: 'd', x: g.beatToPx(g.gateBeats), y });
+                    handles.push({ key: 's', x: g.beatToPx(g.gateBeats), y });
+                } else {
+                    handles.push({ key: 'd', x: g.beatToPx(adsr.a + adsr.d), y: g.sustainY });
+                    handles.push({ key: 's', x: g.beatToPx(adsr.a + adsr.d), y: g.sustainY });
+                }
+            }
+            handles.push({ key: 'r', x: g.beatToPx(g.gateBeats + adsr.r), y: g.bottomY });
+            return handles;
+        }
+
+        function pickADSRHandle(canvas, track, clientX, clientY) {
+            const rect = canvas.getBoundingClientRect();
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+            const handles = getADSRHandlePoints(canvas, track);
+            let nearest = null;
+            handles.forEach(handle => {
+                const distance = Math.hypot(handle.x - x, handle.y - y);
+                if (!nearest || distance < nearest.distance) nearest = { ...handle, distance };
+            });
+            if (nearest && nearest.distance <= 14) return nearest.key;
+            const g = getADSRGraphGeometry(canvas, track.adsr, track);
+            const beat = g.pxToBeat(x);
+            if (beat <= track.adsr.a + (track.adsr.d * 0.5)) return 'a';
+            if (Math.abs(y - g.sustainY) <= 12) return 's';
+            if (beat <= track.adsr.a + track.adsr.d + 0.35) return 'd';
+            return 'r';
+        }
+
+        function setADSRFromGraphPoint(canvas, track, handle, clientX, clientY) {
+            const rect = canvas.getBoundingClientRect();
+            const x = clampValue(clientX - rect.left, 0, rect.width);
+            const y = clampValue(clientY - rect.top, 0, rect.height);
+            normalizeADSR(track);
+            const g = getADSRGraphGeometry(canvas, track.adsr, track);
+            const beat = g.pxToBeat(x);
+            if (handle === 'a') {
+                setADSRParam(track, 'a', beat);
+            } else if (handle === 'd') {
+                setADSRParam(track, 'd', beat - track.adsr.a);
+                setADSRParam(track, 's', getADSRSustainFromY(y, g));
+            } else if (handle === 's') {
+                setADSRParam(track, 's', getADSRSustainFromY(y, g));
+            } else if (handle === 'r') {
+                setADSRParam(track, 'r', beat - g.gateBeats);
+            }
+            syncADSRControls(track);
+        }
+
+        function syncADSRControls(track) {
+            const trackEl = document.getElementById(`track_${track.id}`);
+            if (trackEl) {
+                trackEl.querySelectorAll('.knob-wrap[data-adsr-key]').forEach(wrap => {
+                    const key = wrap.dataset.adsrKey;
+                    const range = ADSR_PARAM_RANGES[key];
+                    if (!range) return;
+                    const value = track.adsr[key];
+                    const t = (value - range.min) / (range.max - range.min);
+                    const deg = ADSR_MIN_DEG + t * (ADSR_MAX_DEG - ADSR_MIN_DEG);
+                    const pip = wrap.querySelector('.knob-pip');
+                    const valEl = wrap.querySelector('.knob-val');
+                    if (pip) pip.style.transform = `translateX(-50%) rotate(${deg}deg)`;
+                    if (valEl) valEl.textContent = key === 's' ? value.toFixed(2) : value.toFixed(2) + 'b';
+                });
+            }
+            if (track.adsrCanvas) drawADSR(track.adsrCanvas, track.adsr, track, state.activeTrackId === state.tracks.indexOf(track));
+        }
+
+        function startADSRGraphDrag(e, canvas, track, index) {
+            e.preventDefault();
+            e.stopPropagation();
+            pushUndo();
+            state.activeTrackId = index;
+            if (e.pointerId !== undefined && canvas.setPointerCapture) canvas.setPointerCapture(e.pointerId);
+            const handle = pickADSRHandle(canvas, track, e.clientX, e.clientY);
+            setADSRFromGraphPoint(canvas, track, handle, e.clientX, e.clientY);
+            const onMove = (ev) => setADSRFromGraphPoint(canvas, track, handle, ev.clientX, ev.clientY);
+            const onUp = () => {
+                window.removeEventListener('pointermove', onMove);
+                window.removeEventListener('pointerup', onUp);
+                window.removeEventListener('pointercancel', onUp);
+                if (e.pointerId !== undefined && canvas.releasePointerCapture) {
+                    try { canvas.releasePointerCapture(e.pointerId); } catch (err) { }
+                }
+            };
+            window.addEventListener('pointermove', onMove);
+            window.addEventListener('pointerup', onUp);
+            window.addEventListener('pointercancel', onUp);
+        }
+
         function drawADSR(canvas, adsr, track = null, isActive = false) {
             const dpr = window.devicePixelRatio || 1;
-            const w = canvas.offsetWidth * dpr;
-            const h = canvas.offsetHeight * dpr;
-            if (w === 0 || h === 0) return;
-            if (canvas.width !== w || canvas.height !== h) {
-                canvas.width = w; canvas.height = h;
+            const cssW = canvas.offsetWidth;
+            const cssH = canvas.offsetHeight;
+            const pixelW = cssW * dpr;
+            const pixelH = cssH * dpr;
+            if (cssW === 0 || cssH === 0) return;
+            if (canvas.width !== pixelW || canvas.height !== pixelH) {
+                canvas.width = pixelW; canvas.height = pixelH;
             }
             const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, w, h);
-
-            // Determine dynamic scale - zoom in if envelope is short
-            const gateBeats = track ? (1.0 / (track.subdiv || 4)) : 0.25;
-            const totalTime = gateBeats + adsr.r;
-            const maxBeats = Math.max(1.0, Math.min(4.0, totalTime * 1.5));
-
-            const beatToPx = (b) => (b / maxBeats) * w;
-            const peakY = 4; // Slight padding from top
-            const bottomY = h - 4; // Slight padding from bottom
-            const sustainY = bottomY - (adsr.s * (bottomY - peakY));
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.clearRect(0, 0, cssW, cssH);
+            if (track) normalizeADSR(track);
+            const g = getADSRGraphGeometry(canvas, adsr, track);
 
             // Draw Gate Background
             ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
-            ctx.fillRect(0, 0, beatToPx(gateBeats), h);
+            ctx.fillRect(0, 0, g.beatToPx(g.gateBeats), g.h);
 
             // Draw Grid Lines
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
             ctx.setLineDash([2, 2]);
             ctx.beginPath();
-            ctx.moveTo(beatToPx(gateBeats), 0); ctx.lineTo(beatToPx(gateBeats), h);
+            ctx.moveTo(g.beatToPx(g.gateBeats), 0); ctx.lineTo(g.beatToPx(g.gateBeats), g.h);
             ctx.stroke();
             ctx.setLineDash([]);
 
             // Points for the path
             const path = [];
-            path.push({ x: 0, y: bottomY });
+            path.push({ x: 0, y: g.bottomY });
 
             let reachedPeak = false;
             let reachedSustain = false;
 
             // Attack phase
-            if (gateBeats < adsr.a) {
-                path.push({ x: beatToPx(gateBeats), y: bottomY - (gateBeats / adsr.a) * (bottomY - peakY) });
+            if (g.gateBeats < adsr.a) {
+                path.push({ x: g.beatToPx(g.gateBeats), y: g.bottomY - (g.gateBeats / adsr.a) * (g.bottomY - g.peakY) });
             } else {
-                path.push({ x: beatToPx(adsr.a), y: peakY });
+                path.push({ x: g.beatToPx(adsr.a), y: g.peakY });
                 reachedPeak = true;
 
                 // Decay phase
-                if (gateBeats < adsr.a + adsr.d) {
-                    const decayProgress = (gateBeats - adsr.a) / adsr.d;
-                    const y = peakY + (sustainY - peakY) * decayProgress;
-                    path.push({ x: beatToPx(gateBeats), y: y });
+                if (g.gateBeats < adsr.a + adsr.d) {
+                    const decayProgress = (g.gateBeats - adsr.a) / adsr.d;
+                    const y = g.peakY + (g.sustainY - g.peakY) * decayProgress;
+                    path.push({ x: g.beatToPx(g.gateBeats), y: y });
                 } else {
-                    path.push({ x: beatToPx(adsr.a + adsr.d), y: sustainY });
+                    path.push({ x: g.beatToPx(adsr.a + adsr.d), y: g.sustainY });
                     reachedSustain = true;
-                    path.push({ x: beatToPx(gateBeats), y: sustainY });
+                    path.push({ x: g.beatToPx(g.gateBeats), y: g.sustainY });
                 }
             }
 
             // Release phase
-            path.push({ x: beatToPx(gateBeats + adsr.r), y: h });
+            path.push({ x: g.beatToPx(g.gateBeats + adsr.r), y: g.bottomY });
 
             // Draw Fill
-            const grad = ctx.createLinearGradient(0, 0, 0, h);
+            const grad = ctx.createLinearGradient(0, 0, 0, g.h);
             const color = isActive ? 'rgba(0, 242, 255, ' : 'rgba(100, 100, 110, ';
             grad.addColorStop(0, color + '0.4)');
             grad.addColorStop(1, color + '0.0)');
@@ -6139,27 +6538,29 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             ctx.beginPath();
             ctx.moveTo(path[0].x, path[0].y);
             path.forEach(p => ctx.lineTo(p.x, p.y));
-            ctx.lineTo(path[path.length - 1].x, h);
+            ctx.lineTo(path[path.length - 1].x, g.bottomY);
             ctx.fillStyle = grad;
             ctx.fill();
 
             // Draw Stroke
             ctx.strokeStyle = isActive ? '#00f2ff' : '#60606a';
-            ctx.lineWidth = 2 * dpr;
+            ctx.lineWidth = 2;
             ctx.lineJoin = 'round';
             ctx.beginPath();
             ctx.moveTo(path[0].x, path[0].y);
             path.forEach(p => ctx.lineTo(p.x, p.y));
             ctx.stroke();
 
-            // Draw reached points
-            ctx.fillStyle = isActive ? '#fff' : '#444';
-            if (reachedPeak) {
-                ctx.beginPath(); ctx.arc(beatToPx(adsr.a), peakY, 2.5 * dpr, 0, Math.PI * 2); ctx.fill();
-            }
-            if (reachedSustain) {
-                ctx.beginPath(); ctx.arc(beatToPx(adsr.a + adsr.d), sustainY, 2.5 * dpr, 0, Math.PI * 2); ctx.fill();
-            }
+            // Draw draggable points
+            ctx.fillStyle = isActive ? '#fff' : '#8b909c';
+            ctx.strokeStyle = '#00f2ff';
+            ctx.lineWidth = 1;
+            if (track) getADSRHandlePoints(canvas, track).forEach(point => {
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            });
         }
 
         function drawXY(canvas, track, showValues = false) {
@@ -6603,12 +7004,13 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
 
                 // Use a small minimum for glideDur to avoid audio issues with zero-time ramps
                 const glideDur = isGlide ? Math.max(0.001, track.glideTime) : 0.001;
+                const env = getADSREnvelopeSeconds(adsr, beatDur);
 
                 let isWobbleOverride = false;
                 switch (track.typeId) {
                     case 'synthwave':
                         lp.frequency.setValueAtTime(freq * 6, time);
-                        lp.frequency.linearRampToValueAtTime(freq * 2.5, time + adsr.a * beatDur + adsr.d * beatDur);
+                        lp.frequency.linearRampToValueAtTime(freq * 2.5, time + env.a + env.d);
                         [-8, 0, 8].forEach((det, i) => {
                             const o = audioCtx.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(startFreq, time); o.detune.value = det;
                             if (targetFreq !== startFreq || isGlide) applyGlide(o.frequency, startFreq, targetFreq, time, glideDur, track.glideMode);
@@ -6627,7 +7029,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                     case 'pluck':
                         const carrier = audioCtx.createOscillator(); const mod = audioCtx.createOscillator(); const modG = audioCtx.createGain();
                         carrier.type = 'sine'; carrier.frequency.setValueAtTime(startFreq, time); mod.type = 'sine'; mod.frequency.setValueAtTime(startFreq * 2.0, time);
-                        modG.gain.setValueAtTime(freq * 5.5, time); modG.gain.exponentialRampToValueAtTime(freq * 0.3, time + 0.08); modG.gain.exponentialRampToValueAtTime(0.001, time + adsr.d * beatDur);
+                        modG.gain.setValueAtTime(freq * 5.5, time); modG.gain.exponentialRampToValueAtTime(freq * 0.3, time + 0.08); modG.gain.exponentialRampToValueAtTime(0.001, time + env.d);
                         if (targetFreq !== startFreq || isGlide) {
                             applyGlide(carrier.frequency, startFreq, targetFreq, time, glideDur, track.glideMode);
                             applyGlide(mod.frequency, startFreq * 2.0, targetFreq * 2.0, time, glideDur, track.glideMode);
@@ -6765,8 +7167,8 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                         wO.connect(lp); wO.start(time); voice.nodes.push(wO);
 
                         localGain.gain.setValueAtTime(0, time);
-                        localGain.gain.linearRampToValueAtTime(0.75, time + adsr.a * beatDur);
-                        localGain.gain.linearRampToValueAtTime(adsr.s * 0.75, time + adsr.a * beatDur + adsr.d * beatDur);
+                        localGain.gain.linearRampToValueAtTime(0.75, time + env.a);
+                        localGain.gain.linearRampToValueAtTime(env.s * 0.75, time + env.a + env.d);
                         isWobbleOverride = true;
                         break;
                     case 'celeste':
@@ -6835,8 +7237,8 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
 
                 if (!isWobbleOverride) {
                     localGain.gain.setValueAtTime(0, time);
-                    localGain.gain.linearRampToValueAtTime(1.0, time + adsr.a * beatDur);
-                    localGain.gain.linearRampToValueAtTime(adsr.s, time + adsr.a * beatDur + adsr.d * beatDur);
+                    localGain.gain.linearRampToValueAtTime(1.0, time + env.a);
+                    localGain.gain.linearRampToValueAtTime(env.s, time + env.a + env.d);
                 }
 
                 if (stepData) noteOff(track, rowIdx, time + (stepData.length || 1.0) * (beatDur / (track.subdiv || 4)), null, !!stepData.arp);
@@ -6884,7 +7286,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
 
                     const adsr = track.adsr;
                     const beatDur = 60.0 / state.bpm;
-                    const rSecs = adsr ? Math.max(0.01, adsr.r * beatDur) : 0.02;
+                    const rSecs = adsr ? getADSREnvelopeSeconds(adsr, beatDur).r : 0.02;
 
                     try {
                         if (typeof voice.gain.gain.cancelAndHoldAtTime === 'function') {
@@ -7391,8 +7793,12 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
         function isFocusedOnInput() {
             const el = document.activeElement;
             if (!el) return false;
+            if (el instanceof HTMLInputElement) {
+                const inputType = (el.type || 'text').toLowerCase();
+                return inputType !== 'range' && inputType !== 'button' && inputType !== 'checkbox' && inputType !== 'radio';
+            }
             const tag = el.tagName;
-            return tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA' || el.isContentEditable;
+            return tag === 'SELECT' || tag === 'TEXTAREA' || el.isContentEditable;
         }
 
         const exportBtn = document.getElementById('export-btn');
@@ -7602,6 +8008,19 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
 
         // --- Drawer Visuals & UI ---
 
+        function drawDrawerCanvasTitle(ctx, drawer, w, dpr) {
+            const index = state.drawers.indexOf(drawer);
+            const title = `Drawer ${index >= 0 ? index + 1 : 1}`;
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.font = `bold ${9 * dpr}px var(--font-mono)`;
+            ctx.fillStyle = 'rgba(180, 190, 205, 0.72)';
+            ctx.shadowBlur = 0;
+            ctx.fillText(title, w / 2, 5 * dpr, Math.max(24 * dpr, w - 12 * dpr));
+            ctx.restore();
+        }
+
         function drawDrawer(canvas, drawer) {
             const ctx = canvas.getContext('2d');
             const w = canvas.width;
@@ -7656,6 +8075,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 ctx.rotate(-Math.PI / 2);
                 ctx.fillText('RES', 0, 0);
                 ctx.restore();
+                drawDrawerCanvasTitle(ctx, drawer, w, dpr);
                 return;
             }
 
@@ -7713,6 +8133,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             ctx.font = `${8 * dpr}px var(--font-mono)`;
             ctx.fillText('1.0', 2 * dpr, 10 * dpr);
             ctx.fillText('0.0', 2 * dpr, h - 2 * dpr);
+            drawDrawerCanvasTitle(ctx, drawer, w, dpr);
         }
 
         function generateWaveformPoints(drawer) {
@@ -7739,7 +8160,6 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             const patchIn = document.createElement('div');
             patchIn.className = `patch-point mod-in`;
             patchIn.id = `in_${drawer.id}`;
-            patchIn.title = "Modulate this drawer with another";
             patchIn.style.borderColor = 'var(--accent-purple)';
             if (state.drawers.some(d => d.connection === drawer.id)) patchIn.classList.add('active');
             return patchIn;
@@ -7749,17 +8169,11 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             const modeBtn = document.createElement('button');
             modeBtn.textContent = drawer.mode === 'pad' ? 'XY' : 'CV';
             modeBtn.style.padding = '0 6px'; modeBtn.style.fontSize = '0.55rem';
+            modeBtn.style.flex = '0 0 auto';
             modeBtn.onclick = () => { drawer.mode = drawer.mode === 'pad' ? 'curve' : 'pad'; renderDrawers(); };
             modeBtn.setAttribute('data-tooltip-title', 'Modulator Mode');
             modeBtn.setAttribute('data-tooltip', 'CV: Draw custom curves or LFOs.\nXY: Use the touch-pad for manual modulation.');
             return modeBtn;
-        }
-
-        function _createDrawerTitle(index) {
-            const titleSpan = document.createElement('span');
-            titleSpan.textContent = `DRAWER ${index + 1}`;
-            titleSpan.style.flexShrink = '0';
-            return titleSpan;
         }
 
         function _createDrawerTargetSelect(drawer) {
@@ -7771,6 +8185,9 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             select.style.color = 'var(--text-main)';
             select.style.border = '1px solid var(--glass-border)';
             select.style.borderRadius = '3px';
+            select.style.minWidth = '0';
+            select.style.flex = '1 1 auto';
+            select.style.maxWidth = '100%';
             const targets = [
                 { val: 'x', label: 'Filter Cutoff' },
                 { val: 'y', label: 'Filter Q/Res' },
@@ -7799,6 +8216,8 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
         function _createDrawerWaveSelect(drawer) {
             const waveSelect = document.createElement('select');
             waveSelect.style.cssText = 'font-size:0.55rem; background:var(--surface); border:1px solid var(--glass-border); color:var(--text-dim); margin-left:8px; border-radius:3px;';
+            waveSelect.setAttribute('data-tooltip-title', 'Wave Shape');
+            waveSelect.setAttribute('data-tooltip', 'Choose the modulator waveform. NONE keeps the hand-drawn curve; SINE, SAW, TRI, and RECT generate synced LFO shapes.');
             ['none', 'sine', 'saw', 'tri', 'rect'].forEach(w => {
                 const opt = document.createElement('option'); opt.value = w; opt.textContent = w.toUpperCase();
                 if (drawer.waveType === w) opt.selected = true;
@@ -7835,7 +8254,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             const rateMin = drawer.sync ? 0.25 : 0.1;
             const rateMax = drawer.sync ? 16 : 20;
             const rateStep = drawer.sync ? 0.25 : 0.1;
-            rateWrap.innerHTML = `<span style="font-size:0.5rem; color:var(--text-dim)">${rateLabel}</span>
+            rateWrap.innerHTML = `<span style="font-size:0.5rem; color:var(--control-label)">${rateLabel}</span>
                                   <input type="range" min="${rateMin}" max="${rateMax}" step="${rateStep}" value="${drawer.waveRate}" style="width:40px; height:3px;">
                                   <span style="font-size:0.5rem; color:var(--accent-yellow); min-width:15px; text-align:left;">${drawer.waveRate}</span>`;
             rateWrap.querySelector('input').oninput = (e) => {
@@ -7855,10 +8274,12 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
 
         function _createDrawerDepthWrap(drawer) {
             const depthWrap = document.createElement('div');
-            depthWrap.style.cssText = 'display:flex; align-items:center; gap:4px; margin-left:8px;';
-            depthWrap.innerHTML = `<span style="font-size:0.5rem; color:var(--text-dim)">DEPTH</span>
-                                   <input type="range" min="0" max="2" step="0.01" value="${drawer.modAmount}" style="width:40px; height:3px; accent-color:var(--accent-pink);">
-                                   <span style="font-size:0.5rem; color:var(--accent-pink); min-width:15px; text-align:left;">${Math.round(drawer.modAmount * 100)}%</span>`;
+            depthWrap.style.cssText = 'display:flex; align-items:center; gap:3px; margin-left:2px;';
+            depthWrap.setAttribute('data-tooltip-title', 'Modulation Depth');
+            depthWrap.setAttribute('data-tooltip', 'Scales how strongly this drawer affects its target. 100% is normal depth; values above 100% exaggerate the modulation.');
+            depthWrap.innerHTML = `<span style="font-size:0.5rem; color:var(--control-label)">DEPTH</span>
+                                   <input type="range" min="0" max="2" step="0.01" value="${drawer.modAmount}" style="width:34px; height:3px; accent-color:var(--accent-pink);">
+                                   <span style="font-size:0.5rem; color:var(--accent-pink); min-width:21px; text-align:left;">${Math.round(drawer.modAmount * 100)}%</span>`;
             depthWrap.querySelector('input').oninput = (e) => {
                 drawer.modAmount = parseFloat(e.target.value);
                 depthWrap.querySelector('span:last-child').textContent = Math.round(drawer.modAmount * 100) + '%';
@@ -7898,20 +8319,24 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
 
         function _createDrawerMinBtn(drawer) {
             const minBtn = document.createElement('button');
-            minBtn.innerHTML = drawer.minimized ? '&#9634;' : '&#9552;'; // Square or double-dash icon
-            minBtn.title = drawer.minimized ? "Expand" : "Minimize";
-            minBtn.style.cssText = 'padding:0 6px; background:transparent; border:none; color:var(--text-main); cursor:pointer; font-size: 0.8rem; opacity: 0.6;';
-            minBtn.onmouseover = () => minBtn.style.opacity = '1';
-            minBtn.onmouseout = () => minBtn.style.opacity = '0.6';
+            minBtn.type = 'button';
+            minBtn.className = 'track-min-btn';
+            minBtn.classList.toggle('is-minimized', !!drawer.minimized);
+            minBtn.setAttribute('aria-label', drawer.minimized ? 'Restore modulator' : 'Minimize modulator');
+            minBtn.setAttribute('data-tooltip-title', drawer.minimized ? 'Restore Modulator' : 'Minimize Modulator');
+            minBtn.setAttribute('data-tooltip', drawer.minimized ? 'Expand this modulation drawer to show its canvas and controls.' : 'Collapse this modulation drawer while keeping its patch routing active.');
             minBtn.onclick = (e) => { e.stopPropagation(); drawer.minimized = !drawer.minimized; renderDrawers(); };
             return minBtn;
         }
 
         function _createDrawerDelBtn(drawer, index) {
             const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.className = 'drawer-delete-btn';
             delBtn.innerHTML = '&times;';
-            delBtn.title = "Delete Modulator";
-            delBtn.style.cssText = 'padding:0 6px; background:transparent; border:none; color:var(--accent-pink); cursor:pointer; font-size: 1rem; opacity: 0.4;';
+            delBtn.setAttribute('data-tooltip-title', 'Delete Modulator');
+            delBtn.setAttribute('data-tooltip', 'Remove this modulation drawer.');
+            delBtn.style.cssText = 'width:18px; flex:0 0 18px; padding:0; display:inline-grid; place-items:center; background:transparent; border:none; color:var(--accent-pink); cursor:pointer; font-size: 1rem; opacity: 0.4;';
             delBtn.onmouseover = () => delBtn.style.opacity = '1';
             delBtn.onmouseout = () => delBtn.style.opacity = '0.4';
             delBtn.onclick = (e) => {
@@ -8037,10 +8462,9 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
 
                 // ROW 1: Routing & Basic Config
                 const row1 = document.createElement('div');
-                row1.style.cssText = 'display:flex; align-items:center; width:100%; gap:8px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:4px; margin-bottom:4px;';
+                row1.className = 'drawer-routing-row';
 
                 const patchIn = _createDrawerPatchIn(drawer);
-                const titleSpan = _createDrawerTitle(index);
                 const modeBtn = _createDrawerModeBtn(drawer);
                 const targetSelect = _createDrawerTargetSelect(drawer);
                 const minBtn = _createDrawerMinBtn(drawer);
@@ -8048,14 +8472,10 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
                 const patchOut = _createDrawerPatchOut(drawer);
 
                 const r1Center = document.createElement('div');
-                r1Center.style.cssText = 'display:flex; align-items:center; gap:6px; flex-grow:1;';
-                r1Center.append(titleSpan, modeBtn, targetSelect);
+                r1Center.className = 'drawer-routing-center';
+                r1Center.append(modeBtn, targetSelect, minBtn, delBtn);
 
-                const r1Right = document.createElement('div');
-                r1Right.style.cssText = 'display:flex; align-items:center; gap:4px;';
-                r1Right.append(minBtn, delBtn, patchOut);
-
-                row1.append(patchIn, r1Center, r1Right);
+                row1.append(patchIn, r1Center, patchOut);
 
                 // ROW 2: Generation & Modification
                 const row2 = document.createElement('div');
@@ -8428,11 +8848,11 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
         document.getElementById('session-load-input').onchange = loadSession;
 
         // --- BOOTSTRAP ---
-        state.fxUnits = [createFxUnit('delay'), createFxUnit('reverb'), createFxUnit('distortion'), createFxUnit('chorus'), createFxUnit('compressor')];
+        state.fxUnits = [createFxUnit('delay'), createFxUnit('reverb')];
         state.tracks.push(createTrack('drumSet'));
 
         // Add secondary tracks and minimize them to keep the focus on the main Drum Set
-        ['auxPerc', 'synthwave', 'bass'].forEach(type => {
+        ['synthwave', 'bass'].forEach(type => {
             const track = createTrack(type);
             track.minimized = true;
             state.tracks.push(track);
