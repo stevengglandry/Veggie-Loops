@@ -3668,7 +3668,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             header.appendChild(masterRow);
 
             const contentRow = document.createElement('div');
-            contentRow.style.cssText = 'display:flex; flex-direction:row; gap:10px; flex:1; align-items:stretch; overflow:visible; min-height:184px;';
+            contentRow.style.cssText = 'display:flex; flex-direction:row; flex-wrap:wrap; gap:10px; row-gap:10px; flex:1; align-items:stretch; align-content:flex-start; overflow:visible; min-height:184px;';
             const createDrumModuleDivider = () => {
                 const divider = document.createElement('div');
                 divider.className = 'drum-module-divider';
@@ -3831,7 +3831,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
 
             // --- COLUMN 3: PATTERN & CONTROLS ---
             const farRightPane = document.createElement('div');
-            farRightPane.style.cssText = 'display:flex; flex-direction:row; gap:10px; min-width:430px; align-items:flex-start; margin-left:auto;';
+            farRightPane.style.cssText = 'display:flex; flex-direction:row; gap:10px; min-width:430px; flex:0 0 auto; align-items:flex-start; margin-left:auto;';
 
             prepareHeaderMidiHub(midiHub, track);
             midiHub.classList.add('drum-midi-box');
@@ -4400,17 +4400,25 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             randStyleSelect.onchange = (e) => { track.randStyle = e.target.value; };
 
             const randModeBtn = document.createElement('button');
-            randModeBtn.textContent = track.randMode === 'replace' ? 'REP' : 'ADD';
+            randModeBtn.textContent = (track.randMode || 'replace') === 'replace' ? 'REP' : 'ADD';
             randModeBtn.setAttribute('data-tooltip-title', 'Randomization Mode');
             randModeBtn.setAttribute('data-tooltip', 'Replace the current pattern or add new notes into it.');
-            randModeBtn.onclick = () => { track.randMode = track.randMode === 'replace' ? 'add' : 'replace'; renderTracks(); };
+            randModeBtn.onclick = (e) => {
+                e.stopPropagation();
+                track.randMode = (track.randMode || 'replace') === 'replace' ? 'add' : 'replace';
+                randModeBtn.textContent = track.randMode === 'replace' ? 'REP' : 'ADD';
+            };
 
             const loopRandBtn = document.createElement('button');
             loopRandBtn.textContent = '🔄';
             loopRandBtn.setAttribute('data-tooltip-title', 'Randomize On Loop');
             loopRandBtn.setAttribute('data-tooltip', 'Create evolving patterns automatically when the loop restarts.');
             if (track.randOnLoop) loopRandBtn.classList.add('active');
-            loopRandBtn.onclick = () => { track.randOnLoop = !track.randOnLoop; renderTracks(); };
+            loopRandBtn.onclick = (e) => {
+                e.stopPropagation();
+                track.randOnLoop = !track.randOnLoop;
+                loopRandBtn.classList.toggle('active', !!track.randOnLoop);
+            };
 
             const densSlider = document.createElement('input');
             densSlider.type = 'range'; densSlider.min = '0.05'; densSlider.max = '1'; densSlider.step = '0.05';
@@ -4463,6 +4471,7 @@ const mcp2000_config_b = {"pads": [{"label": "First", "file": "Guitar-01_first.w
             randGroup.setAttribute('data-tooltip-title', 'Pattern Randomizer');
             randGroup.setAttribute('data-tooltip', 'Generate new sequences based on style, density, and spread.');
             randGroup.style.cssText = 'display:flex; flex-direction:column; gap:4px; padding:6px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:6px; min-width:200px;';
+            randGroup.onclick = (e) => e.stopPropagation();
 
             const midiIn = document.createElement('div');
             midiIn.className = 'patch-point midi-in';
