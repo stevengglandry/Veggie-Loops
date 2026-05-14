@@ -2,7 +2,7 @@
 
 Veggie Loops is a browser-based modular music workstation built with vanilla JavaScript and the Web Audio API. It combines instrument tracks, MCP2000-style sampler pads, melodic arpeggiation, MIDI IN/OUT track routing, modulation drawers, FX pedals, and pattern generation in a static web app that can run locally or through GitHub Pages.
 
-The main app lives in `VeggieLoops.html`. Sampler audio is stored as external WAV files in `samples/mcp2000_sounds/` so the HTML remains easier to search, edit, and deploy.
+The app entry point lives in `VeggieLoops.html`, with static defaults in `VeggieLoops.config.js`, styling in `VeggieLoops.css`, and runtime code in `VeggieLoops.js`. Sampler audio is stored as external WAV files in `samples/mcp2000_sounds/` so the codebase remains easier to search, edit, and deploy.
 
 ## Key Features
 
@@ -20,7 +20,7 @@ The main app lives in `VeggieLoops.html`. Sampler audio is stored as external WA
 - Keep sampler audio external in `samples/mcp2000_sounds/`.
 - Run local QA over HTTP, not `file://`, because browsers restrict local file/sample loading.
 - Support local launching through `Open Veggie Loops.bat` and `VeggieLoops.server.js`.
-- Support public static deployment through GitHub Pages with `index.html`, `VeggieLoops.html`, `.nojekyll`, and the `samples/` folder.
+- Support public static deployment through GitHub Pages with `index.html`, `VeggieLoops.html`, `VeggieLoops.config.js`, `VeggieLoops.css`, `VeggieLoops.js`, `.nojekyll`, and the `samples/` folder.
 
 ## Local Development
 
@@ -64,3 +64,5 @@ The tests serve the app over local HTTP and cover core UI, sampler loading, MIDI
 - Fixed piano-roll left-edge note extension so note starts can be dragged earlier.
 - Biased drum randomizer output toward basic 4/4 beat structure.
 - Added GitHub Pages entry files: `index.html` and `.nojekyll`.
+- Split app styling and runtime code into `VeggieLoops.css` and `VeggieLoops.js`.
+- Split static app defaults and sampler manifests into `VeggieLoops.config.js`.
