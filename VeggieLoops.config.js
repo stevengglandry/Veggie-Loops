@@ -51,6 +51,24 @@ const scalesDef = {
 
 const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
+const tonalIntegrationConfig = {
+enabled: true,
+globalNames: ['Tonal', 'tonal', '@tonaljs/tonal'],
+scaleAliases: {
+chromatic: 'chromatic',
+major: 'major',
+minor: 'minor',
+pentatonic: 'minor pentatonic'
+},
+randomizerChordSymbols: {
+major: 'maj7',
+minor: 'm7',
+pentatonic: 'm7'
+},
+randomizerChordToneDegrees: [0, 2, 4, 6],
+randomizerChordToneWeight: 0.68
+};
+
 const drumStyles = {
 'Kick': ['Sampler', '808 Deep', 'Snappy', 'LoFi'],
 'Snare': ['Sampler', '808 Snap', 'Acoustic', 'LoFi'],
@@ -97,26 +115,26 @@ const samplerDisplayOnlyKeys = [
 const instrumentTypes = {
 'drumSet': { name: 'Drum Set', rows: ['Kick', 'Snare', 'CHat', 'OHat', 'Clap', 'Splash', 'Clave', 'Metal', 'TomL', 'TomH', 'Rim', 'Ride', 'Crash', 'Beep', 'Shaker', 'Ride'], type: 'drum', adsr: { a: 0.005, d: 0.2, s: 0.0, r: 0.2 } },
 'auxPerc': { name: 'Aux Perc', rows: ['Clave', 'Shaker', 'Clap', 'Splash', 'TomH', 'TomL', 'BongoH', 'BongoL', 'Splash', 'Clave', 'Metal', 'Beep'], type: 'drum', adsr: { a: 0.005, d: 0.2, s: 0.0, r: 0.2 } },
-'synthwave': { name: '80s Lead', rows: [], type: 'synth', adsr: { a: 0.05, d: 0.4, s: 0.5, r: 0.3 }, xy: { x: 0.6, y: 0.2 } },
-'bass': { name: 'Sub Bass', rows: [], type: 'synth', adsr: { a: 0.01, d: 0.4, s: 0.3, r: 0.2 }, baseOctaveOffset: -2, xy: { x: 0.2, y: 0.0 } },
-'pad': { name: 'Ethereal Pad', rows: [], type: 'synth', adsr: { a: 0.6, d: 1.0, s: 0.9, r: 2.0 }, xy: { x: 0.4, y: 0.0 }, baseOctaveOffset: 0 },
-'pluck': { name: 'FM Pluck', rows: [], type: 'synth', adsr: { a: 0.005, d: 0.15, s: 0.0, r: 0.1 }, xy: { x: 0.4, y: 0.2 } },
-'arp': { name: 'Chiptune Arp', rows: [], type: 'synth', adsr: { a: 0.01, d: 0.15, s: 0.1, r: 0.1 }, xy: { x: 0.5, y: 0.1 } },
-'piano': { name: 'Grand Piano', rows: [], type: 'synth', adsr: { a: 0.005, d: 1.5, s: 0.0, r: 0.5 }, xy: { x: 0.4, y: 0.0 } },
-'acousticGuitar': { name: 'Acoustic Guitar', rows: [], type: 'synth', adsr: { a: 0.005, d: 1.0, s: 0.0, r: 0.4 }, xy: { x: 0.5, y: 0.0 } },
-'electricGuitar': { name: 'Electric Guitar', rows: [], type: 'synth', adsr: { a: 0.01, d: 1.5, s: 0.2, r: 0.3 }, xy: { x: 0.7, y: 0.3 } },
-'organ': { name: 'Hammond Organ', rows: [], type: 'synth', adsr: { a: 0.02, d: 0.1, s: 1.0, r: 0.1 }, xy: { x: 0.6, y: 0.1 } },
-'marimba': { name: 'Marimba', rows: [], type: 'synth', adsr: { a: 0.005, d: 0.5, s: 0.0, r: 0.3 }, xy: { x: 0.5, y: 0.0 } },
-'vibraphone': { name: 'Vibraphone', rows: [], type: 'synth', adsr: { a: 0.01, d: 2.5, s: 0.0, r: 1.5 }, xy: { x: 0.4, y: 0.0 } },
-'brass': { name: 'Brass Section', rows: [], type: 'synth', adsr: { a: 0.15, d: 0.4, s: 0.8, r: 0.3 }, xy: { x: 0.5, y: 0.1 } },
-'flute': { name: 'Orchestral Flute', rows: [], type: 'synth', adsr: { a: 0.2, d: 0.2, s: 0.8, r: 0.4 }, xy: { x: 0.3, y: 0.0 }, baseOctaveOffset: 1 },
-'supersaw': { name: 'Supersaw Lead', rows: [], type: 'synth', adsr: { a: 0.05, d: 0.4, s: 0.6, r: 0.4 }, xy: { x: 0.8, y: 0.2 } },
-'wobblebass': { name: 'Wobble Bass', rows: [], type: 'synth', adsr: { a: 0.02, d: 0.5, s: 0.4, r: 0.2 }, xy: { x: 0.25, y: 0.4 }, baseOctaveOffset: -1, voiceLfoDefault: true },
-'celeste': { name: 'Celeste', rows: [], type: 'synth', adsr: { a: 0.01, d: 1.0, s: 0.0, r: 0.5 }, xy: { x: 0.5, y: 0.0 }, baseOctaveOffset: 1 },
-'clavinet': { name: 'Funk Clav', rows: [], type: 'synth', adsr: { a: 0.005, d: 0.3, s: 0.0, r: 0.1 }, xy: { x: 0.6, y: 0.1 } },
-'theremin': { name: 'Theremin', rows: [], type: 'synth', adsr: { a: 0.3, d: 0.1, s: 1.0, r: 0.5 }, xy: { x: 0.4, y: 0.0 }, baseOctaveOffset: 1, voiceLfoDefault: true },
-'whiteNoise': { name: 'White Noise', rows: [], type: 'synth', adsr: { a: 0.05, d: 0.5, s: 0.1, r: 0.5 }, xy: { x: 0.8, y: 0.0 } },
-'bassGuitar': { name: 'Bass Guitar', rows: [], type: 'synth', adsr: { a: 0.01, d: 0.4, s: 0.1, r: 0.3 }, baseOctaveOffset: -2, xy: { x: 0.15, y: 0.1 } }
+'synthwave': { name: 'Analog Lead', rows: [], type: 'synth', adsr: { a: 0.018, d: 0.32, s: 0.58, r: 0.28 }, xy: { x: 0.62, y: 0.18 } },
+'bass': { name: 'Deep Sub', rows: [], type: 'synth', adsr: { a: 0.006, d: 0.34, s: 0.48, r: 0.16 }, baseOctaveOffset: -2, xy: { x: 0.22, y: 0.06 } },
+'pad': { name: 'Warm Pad', rows: [], type: 'synth', adsr: { a: 0.85, d: 1.2, s: 0.82, r: 2.4 }, xy: { x: 0.44, y: 0.08 }, baseOctaveOffset: 0, voiceLfoDefault: true },
+'pluck': { name: 'Glass Pluck', rows: [], type: 'synth', adsr: { a: 0.004, d: 0.24, s: 0.0, r: 0.16 }, xy: { x: 0.46, y: 0.18 } },
+'arp': { name: 'Bit Arp', rows: [], type: 'synth', adsr: { a: 0.006, d: 0.18, s: 0.08, r: 0.12 }, xy: { x: 0.54, y: 0.12 } },
+'piano': { name: 'Dusty Keys', rows: [], type: 'synth', adsr: { a: 0.004, d: 0.95, s: 0.0, r: 0.36 }, xy: { x: 0.38, y: 0.06 } },
+'acousticGuitar': { name: 'Plucked String', rows: [], type: 'synth', adsr: { a: 0.003, d: 0.75, s: 0.0, r: 0.32 }, xy: { x: 0.48, y: 0.08 } },
+'electricGuitar': { name: 'Drive Guitar', rows: [], type: 'synth', adsr: { a: 0.006, d: 0.75, s: 0.28, r: 0.26 }, xy: { x: 0.66, y: 0.26 } },
+'organ': { name: 'Tonewheel', rows: [], type: 'synth', adsr: { a: 0.018, d: 0.08, s: 0.92, r: 0.12 }, xy: { x: 0.58, y: 0.12 } },
+'marimba': { name: 'Wood Mallet', rows: [], type: 'synth', adsr: { a: 0.003, d: 0.38, s: 0.0, r: 0.2 }, xy: { x: 0.5, y: 0.04 } },
+'vibraphone': { name: 'Vibe Keys', rows: [], type: 'synth', adsr: { a: 0.012, d: 1.35, s: 0.0, r: 1.1 }, xy: { x: 0.42, y: 0.08 }, voiceLfoDefault: true },
+'brass': { name: 'Synth Brass', rows: [], type: 'synth', adsr: { a: 0.09, d: 0.32, s: 0.72, r: 0.26 }, xy: { x: 0.54, y: 0.12 } },
+'flute': { name: 'Air Lead', rows: [], type: 'synth', adsr: { a: 0.12, d: 0.22, s: 0.72, r: 0.36 }, xy: { x: 0.34, y: 0.04 }, baseOctaveOffset: 1, voiceLfoDefault: true },
+'supersaw': { name: 'Wide Saw', rows: [], type: 'synth', adsr: { a: 0.025, d: 0.42, s: 0.62, r: 0.38 }, xy: { x: 0.76, y: 0.2 } },
+'wobblebass': { name: 'Wobble Bass', rows: [], type: 'synth', adsr: { a: 0.012, d: 0.42, s: 0.5, r: 0.18 }, xy: { x: 0.26, y: 0.42 }, baseOctaveOffset: -1, voiceLfoDefault: true },
+'celeste': { name: 'Bell Keys', rows: [], type: 'synth', adsr: { a: 0.006, d: 0.9, s: 0.0, r: 0.52 }, xy: { x: 0.48, y: 0.04 }, baseOctaveOffset: 1 },
+'clavinet': { name: 'Funk Clav', rows: [], type: 'synth', adsr: { a: 0.003, d: 0.24, s: 0.0, r: 0.1 }, xy: { x: 0.62, y: 0.14 } },
+'theremin': { name: 'Porta Lead', rows: [], type: 'synth', adsr: { a: 0.16, d: 0.12, s: 0.86, r: 0.42 }, xy: { x: 0.42, y: 0.04 }, baseOctaveOffset: 1, voiceLfoDefault: true },
+'whiteNoise': { name: 'Noise Wash', rows: [], type: 'synth', adsr: { a: 0.12, d: 0.65, s: 0.12, r: 0.7 }, xy: { x: 0.72, y: 0.08 } },
+'bassGuitar': { name: 'Picked Bass', rows: [], type: 'synth', adsr: { a: 0.004, d: 0.38, s: 0.16, r: 0.22 }, baseOctaveOffset: -2, xy: { x: 0.18, y: 0.08 } }
 };
 
 const fxDefaults = {

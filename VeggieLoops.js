@@ -45,47 +45,327 @@
         // --- State & Config ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         // --- Audio Routing Setup ---
+        function createMasterSoftClipCurve(threshold = 0.82) {
+            const curve = new Float32Array(2048);
+            for (let i = 0; i < curve.length; i++) {
+                const x = (i / (curve.length - 1)) * 2 - 1;
+                const abs = Math.abs(x);
+                if (abs <= threshold) {
+                    curve[i] = x;
+                } else {
+                    const clipped = threshold + (1 - threshold) * Math.tanh((abs - threshold) / (1 - threshold));
+                    curve[i] = Math.sign(x) * Math.min(0.98, clipped);
+                }
+            }
+            return curve;
+        }
+
         const masterAnalyser = audioCtx.createAnalyser();
         masterAnalyser.fftSize = 2048;
         const bufferLength = masterAnalyser.frequencyBinCount;
         const masterDataArray = new Uint8Array(bufferLength);
+        const masterMeterState = { peak: 0, rms: 0, clipping: false, clipHold: 0, limiterReduction: 0 };
 
         const masterGain = audioCtx.createGain(); masterGain.gain.value = 0.8;
-        masterGain.connect(masterAnalyser); masterAnalyser.connect(audioCtx.destination);
+        const masterSoftClipper = audioCtx.createWaveShaper();
+        masterSoftClipper.curve = createMasterSoftClipCurve();
+        masterSoftClipper.oversample = '2x';
+        const masterLimiter = audioCtx.createDynamicsCompressor();
+        masterLimiter.threshold.value = -1.5;
+        masterLimiter.knee.value = 2;
+        masterLimiter.ratio.value = 20;
+        masterLimiter.attack.value = 0.003;
+        masterLimiter.release.value = 0.12;
+        masterGain.connect(masterSoftClipper);
+        masterSoftClipper.connect(masterLimiter);
+        masterLimiter.connect(masterAnalyser);
+        masterAnalyser.connect(audioCtx.destination);
+
+        function createToneBridge() {
+            const ToneRef = window.Tone;
+            const bridge = {
+                available: !!ToneRef,
+                enabled: false,
+                version: ToneRef?.version || null,
+                contextShared: false,
+                transport: null,
+                lastBpm: null,
+                connectToMaster(node) {
+                    if (!node || typeof node.connect !== 'function') return false;
+                    try {
+                        node.connect(masterGain);
+                        return true;
+                    } catch (e) {
+                        console.warn('Tone bridge connection failed:', e);
+                        return false;
+                    }
+                },
+                setBpm(bpm) {
+                    const nextBpm = Number(bpm);
+                    if (!this.enabled || !Number.isFinite(nextBpm) || this.lastBpm === nextBpm) return;
+                    try {
+                        const bpmParam = this.transport?.bpm;
+                        if (bpmParam) {
+                            if (typeof bpmParam.setValueAtTime === 'function') bpmParam.setValueAtTime(nextBpm, audioCtx.currentTime);
+                            else bpmParam.value = nextBpm;
+                        }
+                        this.lastBpm = nextBpm;
+                    } catch (e) {
+                        console.warn('Tone bridge BPM sync failed:', e);
+                    }
+                },
+                start() {
+                    if (!this.enabled || typeof ToneRef?.start !== 'function') return;
+                    try {
+                        ToneRef.start();
+                    } catch (e) {
+                        console.warn('Tone bridge start failed:', e);
+                    }
+                }
+            };
+
+            if (!ToneRef) return bridge;
+            try {
+                if (typeof ToneRef.setContext === 'function') {
+                    try {
+                        ToneRef.setContext(audioCtx);
+                    } catch (e) {
+                        if (typeof ToneRef.Context !== 'function') throw e;
+                        ToneRef.setContext(new ToneRef.Context(audioCtx));
+                    }
+                }
+                const toneContext = typeof ToneRef.getContext === 'function' ? ToneRef.getContext() : ToneRef.context;
+                bridge.contextShared = toneContext === audioCtx || toneContext?.rawContext === audioCtx;
+                bridge.transport = typeof ToneRef.getTransport === 'function' ? ToneRef.getTransport() : ToneRef.Transport;
+                bridge.enabled = true;
+            } catch (e) {
+                console.warn('Tone bridge unavailable:', e);
+            }
+            return bridge;
+        }
+
+        const toneBridge = createToneBridge();
+        window.veggieToneBridge = toneBridge;
 
         // --- Track Data Config ---
 
+        const tonalDefaults = {
+            enabled: true,
+            globalNames: ['Tonal'],
+            scaleAliases: {
+                chromatic: 'chromatic',
+                major: 'major',
+                minor: 'minor',
+                pentatonic: 'minor pentatonic'
+            },
+            randomizerChordSymbols: {
+                major: 'maj7',
+                minor: 'm7',
+                pentatonic: 'm7'
+            },
+            randomizerChordToneDegrees: [0, 2, 4, 6],
+            randomizerChordToneWeight: 0.68
+        };
+        const suppliedTonalConfig = (typeof tonalIntegrationConfig !== 'undefined' && tonalIntegrationConfig && typeof tonalIntegrationConfig === 'object')
+            ? tonalIntegrationConfig
+            : {};
+        const tonalSettings = {
+            ...tonalDefaults,
+            ...suppliedTonalConfig,
+            scaleAliases: { ...tonalDefaults.scaleAliases, ...(suppliedTonalConfig.scaleAliases || {}) },
+            randomizerChordSymbols: { ...tonalDefaults.randomizerChordSymbols, ...(suppliedTonalConfig.randomizerChordSymbols || {}) }
+        };
+        let cachedTonal = null;
+
+        function getTonal() {
+            if (!tonalSettings.enabled || typeof window === 'undefined') return null;
+            if (cachedTonal?.Scale) return cachedTonal;
+            const globalNames = Array.isArray(tonalSettings.globalNames) ? tonalSettings.globalNames : ['Tonal'];
+            for (const globalName of globalNames) {
+                const candidate = window[globalName];
+                if (candidate?.Scale) {
+                    cachedTonal = candidate;
+                    return candidate;
+                }
+            }
+            return null;
+        }
+
+        function hasTonalSupport() {
+            return !!getTonal();
+        }
+
+        function normalizeTonalPitchClass(noteName) {
+            const tonal = getTonal();
+            const noteApi = tonal?.Note;
+            let pitchClass = null;
+            try {
+                if (typeof noteApi?.pitchClass === 'function') pitchClass = noteApi.pitchClass(noteName);
+                else if (typeof noteApi?.pc === 'function') pitchClass = noteApi.pc(noteName);
+                else if (typeof noteApi?.get === 'function') pitchClass = noteApi.get(noteName)?.pc;
+            } catch (e) {
+                pitchClass = null;
+            }
+            if (!pitchClass) {
+                const match = String(noteName || '').match(/^([A-G](?:#{1,2}|b{1,2})?)/);
+                pitchClass = match ? match[1] : null;
+            }
+            return pitchClass && getPitchIndex(pitchClass) >= 0 ? pitchClass : null;
+        }
+
+        function getScaleIntervals(scaleType) {
+            return scalesDef[scaleType] || scalesDef.minor;
+        }
+
+        function getTonalScalePitchClasses(rootPitch, scaleType) {
+            const tonal = getTonal();
+            if (!tonal?.Scale || typeof tonal.Scale.get !== 'function') return null;
+            const scaleName = tonalSettings.scaleAliases?.[scaleType] || scaleType;
+            const candidates = [...new Set([`${rootPitch} ${scaleName}`, `${rootPitch} ${scaleType}`])];
+            for (const candidateName of candidates) {
+                try {
+                    const scale = tonal.Scale.get(candidateName);
+                    const pitchClasses = Array.isArray(scale?.notes)
+                        ? scale.notes.map(normalizeTonalPitchClass).filter(Boolean)
+                        : [];
+                    if (pitchClasses.length > 0) return pitchClasses;
+                } catch (e) {
+                    // Fall back to local scale definitions when Tonal cannot resolve a name.
+                }
+            }
+            return null;
+        }
+
+        function getScaleSteps(rootNoteIdx, scaleType) {
+            const rootPitch = noteNames[rootNoteIdx] || noteNames[0];
+            const tonalPitchClasses = scaleType === 'chromatic' ? null : getTonalScalePitchClasses(rootPitch, scaleType);
+            if (tonalPitchClasses) {
+                const seenIntervals = new Set();
+                const tonalSteps = [];
+                tonalPitchClasses.forEach(pitchClass => {
+                    const pitchIdx = getPitchIndex(pitchClass);
+                    if (pitchIdx < 0) return;
+                    const interval = (pitchIdx - rootNoteIdx + 12) % 12;
+                    if (seenIntervals.has(interval)) return;
+                    seenIntervals.add(interval);
+                    tonalSteps.push({ interval, pitch: noteNames[pitchIdx], spelling: pitchClass });
+                });
+                if (tonalSteps.length > 0) return tonalSteps;
+            }
+
+            return getScaleIntervals(scaleType).map(interval => ({
+                interval,
+                pitch: noteNames[(rootNoteIdx + interval) % 12]
+            }));
+        }
+
+        function getTonalChordPitchClasses(rootPitch, chordSymbol) {
+            const tonal = getTonal();
+            const chordApi = tonal?.Chord;
+            if (!chordApi || !chordSymbol) return null;
+
+            const readNotes = chord => Array.isArray(chord?.notes)
+                ? chord.notes.map(normalizeTonalPitchClass).filter(Boolean)
+                : [];
+            try {
+                if (typeof chordApi.getChord === 'function') {
+                    const notes = readNotes(chordApi.getChord(chordSymbol, rootPitch));
+                    if (notes.length > 0) return notes;
+                }
+            } catch (e) {
+                // Older Tonal builds may not support getChord.
+            }
+
+            if (typeof chordApi.get !== 'function') return null;
+            const candidates = [...new Set([`${rootPitch}${chordSymbol}`, `${rootPitch} ${chordSymbol}`])];
+            for (const chordName of candidates) {
+                try {
+                    const notes = readNotes(chordApi.get(chordName));
+                    if (notes.length > 0) return notes;
+                } catch (e) {
+                    // Keep trying compatible chord name formats.
+                }
+            }
+            return null;
+        }
+
+        function getTonalRandomizerPitchClasses(rootPitch, scaleType) {
+            const scalePitchClasses = getTonalScalePitchClasses(rootPitch, scaleType);
+            if (!scalePitchClasses?.length) return null;
+
+            const chordSymbol = tonalSettings.randomizerChordSymbols?.[scaleType];
+            const chordPitchClasses = chordSymbol ? getTonalChordPitchClasses(rootPitch, chordSymbol) : null;
+            if (chordPitchClasses?.length) return chordPitchClasses;
+
+            const degrees = Array.isArray(tonalSettings.randomizerChordToneDegrees)
+                ? tonalSettings.randomizerChordToneDegrees
+                : tonalDefaults.randomizerChordToneDegrees;
+            return degrees
+                .map(degree => scalePitchClasses[degree])
+                .filter(Boolean);
+        }
+
+        function getTonalRandomizerRows(track, spread) {
+            const template = instrumentTypes[track?.typeId];
+            if (!template || template.type === 'drum' || state?.globalScale === 'chromatic') return [];
+            const rootPitch = state?.globalKey || 'C';
+            const pitchClasses = getTonalRandomizerPitchClasses(rootPitch, state?.globalScale || 'minor');
+            if (!pitchClasses?.length) return [];
+
+            const chordPitchIndexes = new Set(pitchClasses.map(getPitchIndex).filter(idx => idx >= 0));
+            const rowCount = template.rows.length;
+            const center = Math.floor(rowCount / 2);
+            const span = Math.max(1, Math.floor(rowCount * spread));
+            const minRow = Math.max(0, Math.floor(center - span / 2));
+            const maxRow = Math.min(rowCount - 1, Math.floor(center - span / 2 + span - 1));
+            const rows = [];
+            template.rows.forEach((rowName, rowIdx) => {
+                if (rowIdx < minRow || rowIdx > maxRow) return;
+                const parts = splitNoteLabel(rowName);
+                if (!parts) return;
+                const pitchIdx = getPitchIndex(parts.pitch);
+                if (chordPitchIndexes.has(pitchIdx)) rows.push(rowIdx);
+            });
+            return rows;
+        }
+
         function getScaleRows(rootNoteIdx, scaleType) {
+            const safeRootIdx = Number.isInteger(rootNoteIdx) && rootNoteIdx >= 0 ? rootNoteIdx : 0;
             if (scaleType === 'chromatic') {
                 return [
                     'C6', 'B5', 'A#5', 'A5', 'G#5', 'G5', 'F#5', 'F5', 'E5', 'D#5', 'D5', 'C#5',
                     'C5', 'B4', 'A#4', 'A4', 'G#4', 'G4', 'F#4', 'F4', 'E4', 'D#4', 'D4', 'C#4', 'C4'
                 ];
             }
-            let intervals = scalesDef[scaleType];
+            let scaleSteps = getScaleSteps(safeRootIdx, scaleType);
             let allNotes = [];
             // Two octaves
             for (let octOffset = 0; octOffset < 2; octOffset++) {
-                for (let i = 0; i < intervals.length; i++) {
-                    let totalInterval = intervals[i] + (octOffset * 12);
-                    let noteIdx = (rootNoteIdx + totalInterval) % 12;
-                    let octave = 4 + Math.floor((rootNoteIdx + totalInterval) / 12);
-                    allNotes.push(noteNames[noteIdx] + octave);
+                for (let i = 0; i < scaleSteps.length; i++) {
+                    let totalInterval = scaleSteps[i].interval + (octOffset * 12);
+                    let octave = 4 + Math.floor((safeRootIdx + totalInterval) / 12);
+                    allNotes.push(scaleSteps[i].pitch + octave);
                 }
             }
             // Final root note at the top
-            allNotes.push(noteNames[rootNoteIdx] + (4 + Math.floor((rootNoteIdx + 24) / 12)));
+            allNotes.push(noteNames[safeRootIdx] + (4 + Math.floor((safeRootIdx + 24) / 12)));
             return allNotes.reverse();
         }
 
         function splitNoteLabel(noteName) {
-            const match = String(noteName || '').match(/^([A-G](?:#|b)?)(-?\d+)$/);
+            const match = String(noteName || '').match(/^([A-G](?:#{1,2}|b{1,2})?)(-?\d+)$/);
             return match ? { pitch: match[1], octave: match[2] } : null;
         }
 
         function getPitchIndex(pitch) {
-            const flatToSharp = { Db: 'C#', Eb: 'D#', Gb: 'F#', Ab: 'G#', Bb: 'A#' };
-            return noteNames.indexOf(flatToSharp[pitch] || pitch);
+            const match = String(pitch || '').match(/^([A-G])([#b]*)$/);
+            if (!match) return -1;
+            const naturalPitch = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+            let pitchIdx = naturalPitch[match[1]];
+            for (const accidental of match[2]) {
+                pitchIdx += accidental === '#' ? 1 : -1;
+            }
+            return ((pitchIdx % 12) + 12) % 12;
         }
 
         function noteNameToAbsoluteSemitone(noteName) {
@@ -101,6 +381,19 @@
             const scale = state?.globalScale || 'minor';
             if (scale === 'chromatic') return pitch;
             const rootPitch = state?.globalKey || 'C';
+            const tonalPitchClasses = getTonalScalePitchClasses(rootPitch, scale);
+            if (tonalPitchClasses) {
+                const rootIdx = getPitchIndex(rootPitch);
+                const pitchIdx = getPitchIndex(pitch);
+                if (rootIdx >= 0 && pitchIdx >= 0) {
+                    const rel = (pitchIdx - rootIdx + 12) % 12;
+                    const tonalPitch = tonalPitchClasses.find(candidate => {
+                        const candidateIdx = getPitchIndex(candidate);
+                        return candidateIdx >= 0 && (candidateIdx - rootIdx + 12) % 12 === rel;
+                    });
+                    if (tonalPitch) return tonalPitch;
+                }
+            }
             const intervals = scalesDef[scale] || scalesDef.minor;
             const rootIdx = getPitchIndex(rootPitch);
             const pitchIdx = getPitchIndex(pitch);
@@ -344,6 +637,7 @@
                 drawers: new Map()
             }
         };
+        toneBridge.setBpm(state.bpm);
 
         function refreshLookupMap() {
             state.lookup.tracks.clear();
@@ -1790,6 +2084,14 @@
             return mode === 'gate' || mode === 'loop';
         }
 
+        function isHeldVoice(track, rowIdx, template = null) {
+            const resolvedTemplate = template || instrumentTypes[track?.typeId];
+            if (!resolvedTemplate) return true;
+            if (resolvedTemplate.type === 'synth') return true;
+            if (resolvedTemplate.type === 'drum' && isSamplerDrumVariant(track, rowIdx)) return samplerUsesHeldGate(track);
+            return false;
+        }
+
         function getSamplerPlaybackBuffer(buffer, reverse = false) {
             if (!buffer || !reverse) return buffer;
             if (reversedSamplerBuffers.has(buffer)) return reversedSamplerBuffers.get(buffer);
@@ -1925,22 +2227,20 @@
 
                 for (let sample = 0; sample < length; sample++) {
                     const t = sample / sampleRate;
-                    // Original snappy decay
-                    const decay = Math.exp(-t * 3.5);
+                    const bodyDecay = Math.exp(-t * 2.25);
+                    const brightDecay = Math.exp(-t * 8.5);
+                    const pluckEnv = Math.exp(-t * 95);
+                    const pluck = (Math.random() * 2 - 1) * 0.11 * pluckEnv;
+                    const body = (
+                        Math.sin(2 * Math.PI * freq * t) * 0.52 +
+                        Math.sin(2 * Math.PI * freq * 2.01 * t) * 0.12 * brightDecay +
+                        Math.sin(2 * Math.PI * freq * 3.02 * t) * 0.045 * brightDecay
+                    ) * bodyDecay;
+                    const stereoTwang = Math.sin(2 * Math.PI * freq * 1.997 * t) * 0.018 * bodyDecay;
+                    const val = body + pluck;
 
-                    // Original sharp noise pluck (200 samples at high amplitude)
-                    const pluck = (sample < 200) ? (Math.random() * 0.25) : 0;
-
-                    // Reverted to the "twangy" additive synthesis profile
-                    const val = (
-                        Math.sin(2 * Math.PI * freq * t) * 0.4 +          // Fundamental
-                        Math.sin(2 * Math.PI * freq * 2.01 * t) * 0.2 +   // Bright Octave + detune
-                        Math.sin(2 * Math.PI * freq * 3.02 * t) * 0.1 +   // Metallic harmonic
-                        pluck
-                    ) * decay;
-
-                    l[sample] = val;
-                    r[sample] = val;
+                    l[sample] = val + stereoTwang;
+                    r[sample] = val - stereoTwang;
                 }
                 mcp2000_cache[`Guitar ${noteName}`] = buffer;
             }
@@ -2028,7 +2328,23 @@
 
             source.playbackRate.setValueAtTime(pitch, startTime);
 
-            source.connect(localGain);
+            const samplerFade = audioCtx.createGain();
+            const playbackDuration = source.buffer.duration / pitch;
+            const fadeInSeconds = Math.min(0.004, Math.max(0.001, playbackDuration * 0.4));
+            samplerFade.gain.setValueAtTime(0, startTime);
+            samplerFade.gain.linearRampToValueAtTime(1, startTime + fadeInSeconds);
+            if (!source.loop) {
+                const endTime = startTime + playbackDuration;
+                const fadeOutSeconds = Math.min(0.006, Math.max(0.001, playbackDuration * 0.4));
+                const fadeStart = Math.max(startTime + fadeInSeconds, endTime - fadeOutSeconds);
+                if (fadeStart < endTime) {
+                    samplerFade.gain.setValueAtTime(1, fadeStart);
+                    samplerFade.gain.linearRampToValueAtTime(0, endTime);
+                }
+            }
+
+            source.connect(samplerFade);
+            samplerFade.connect(localGain);
 
             source.start(startTime);
             track.lastBuffer = source.buffer;
@@ -3147,7 +3463,7 @@
 
             const randBtn = document.createElement('button'); randBtn.textContent = '🎲';
             randBtn.setAttribute('data-tooltip-title', 'Generate Pattern');
-            randBtn.setAttribute('data-tooltip', 'Generate a new sequence using the current randomizer settings.');
+            randBtn.setAttribute('data-tooltip', 'Generate a new sequence using the current randomizer settings.' + (template.type !== 'drum' && hasTonalSupport() ? ' Tonal.js is loaded, so melodic picks favor key chord tones.' : ''));
             randBtn.style.cssText = 'background:linear-gradient(#111116,#111116) padding-box, linear-gradient(135deg, var(--accent-purple), var(--accent-cyan), var(--accent-pink)) border-box; color:var(--accent-cyan); font-weight:bold; border:1px solid transparent; border-radius:4px; padding:2px 8px; cursor:pointer; box-shadow:0 0 9px rgba(0,242,255,0.18), 0 0 7px rgba(180,0,255,0.18); text-shadow:0 0 6px rgba(0,242,255,0.7);';
             randBtn.onclick = () => {
                 randomizeTrack(track);
@@ -4154,6 +4470,7 @@
             // 3. Restore Global BPM/Key/Scale
             if (scene.bpm) {
                 state.bpm = scene.bpm;
+                toneBridge.setBpm(state.bpm);
                 document.getElementById('bpm-input').value = state.bpm;
             }
             if (scene.key) {
@@ -4248,6 +4565,13 @@
                 const span = Math.max(1, Math.floor(track.grid.length * spread));
                 const r = Math.floor(center - span / 2 + Math.random() * span);
                 return Math.max(0, Math.min(track.grid.length - 1, r));
+            };
+            const tonalRandomizerRows = template.type === 'synth' ? getTonalRandomizerRows(track, spread) : [];
+            const getMusicalRandRow = () => {
+                if (tonalRandomizerRows.length > 0 && Math.random() < tonalSettings.randomizerChordToneWeight) {
+                    return tonalRandomizerRows[Math.floor(Math.random() * tonalRandomizerRows.length)];
+                }
+                return getRandRow();
             };
 
             const getRandNoteData = (isOn) => {
@@ -4359,7 +4683,7 @@
                     } else {
                         const motifLen = Math.random() > 0.5 ? 4 : 8;
                         const motifRhythm = Array(motifLen).fill().map(() => Math.random() < dens * 0.6);
-                        const motifNotes = Array(motifLen).fill().map(() => getRandRow());
+                        const motifNotes = Array(motifLen).fill().map(() => getMusicalRandRow());
                         for (let s = 0; s < steps; s++) if (motifRhythm[s % motifLen]) track.grid[motifNotes[s % motifLen]][s] = getRandNoteData(true);
                     }
                     break;
@@ -4629,6 +4953,7 @@
                 let newBpm = Math.max(40, Math.min(240, startBpmVal + Math.floor(delta / 2)));
                 bpmInput.value = newBpm;
                 state.bpm = newBpm;
+                toneBridge.setBpm(state.bpm);
             }
             if (isResizingLeft) {
                 const newWidth = e.clientX;
@@ -5393,6 +5718,110 @@
             return lfoGain;
         }
 
+        function createVoiceSaturationCurve(amount = 2.5) {
+            const drive = Math.max(0.2, amount);
+            const curve = new Float32Array(2048);
+            const norm = Math.tanh(drive);
+            for (let i = 0; i < curve.length; i++) {
+                const x = (i / (curve.length - 1)) * 2 - 1;
+                curve[i] = Math.tanh(x * drive) / norm;
+            }
+            return curve;
+        }
+
+        function createVoiceSaturator(amount = 2.5) {
+            const shaper = audioCtx.createWaveShaper();
+            shaper.curve = createVoiceSaturationCurve(amount);
+            shaper.oversample = '2x';
+            return shaper;
+        }
+
+        function createNoiseBuffer(duration = 0.2) {
+            const length = Math.max(1, Math.floor(audioCtx.sampleRate * duration));
+            const buffer = audioCtx.createBuffer(1, length, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+            return buffer;
+        }
+
+        function addVoiceOsc(voice, destination, type, startFrequency, targetFrequency, time, options = {}) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const start = Math.max(1, Number.isFinite(startFrequency) ? startFrequency : 1);
+            const target = Math.max(1, Number.isFinite(targetFrequency) ? targetFrequency : start);
+            const amp = Math.max(0, options.gain ?? 1);
+            const attack = Math.max(0, options.attack || 0);
+
+            osc.type = type || 'sine';
+            osc.frequency.setValueAtTime(start, time);
+            if (Number.isFinite(options.detune)) osc.detune.setValueAtTime(options.detune, time);
+            if (options.lfoGain) options.lfoGain.connect(osc.frequency);
+            if (Math.abs(target - start) > 0.001 || options.forceGlide) {
+                applyGlide(osc.frequency, start, target, time, Math.max(0.001, options.glideDur || 0.001), options.glideMode);
+            }
+
+            if (attack > 0) {
+                gain.gain.setValueAtTime(0, time);
+                gain.gain.linearRampToValueAtTime(amp, time + attack);
+            } else {
+                gain.gain.setValueAtTime(amp, time);
+            }
+            if (options.decay) {
+                gain.gain.exponentialRampToValueAtTime(0.001, time + Math.max(attack + 0.001, options.decay));
+            }
+
+            osc.connect(gain);
+            if (Number.isFinite(options.pan) && audioCtx.createStereoPanner) {
+                const panner = audioCtx.createStereoPanner();
+                panner.pan.setValueAtTime(Math.max(-1, Math.min(1, options.pan)), time);
+                gain.connect(panner);
+                panner.connect(destination);
+            } else {
+                gain.connect(destination);
+            }
+
+            osc.start(time);
+            voice.nodes.push(osc);
+            return { osc, gain };
+        }
+
+        function addNoiseBurst(voice, destination, time, options = {}) {
+            const duration = Math.max(0.01, options.duration || 0.12);
+            const source = audioCtx.createBufferSource();
+            const gain = audioCtx.createGain();
+            const amp = Math.max(0, options.gain ?? 0.1);
+            source.buffer = createNoiseBuffer(duration);
+            source.loop = !!options.loop;
+
+            let output = source;
+            if (options.filterType) {
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = options.filterType;
+                filter.frequency.setValueAtTime(Math.max(20, options.frequency || 2000), time);
+                filter.Q.setValueAtTime(Math.max(0.001, options.q || 0.7), time);
+                source.connect(filter);
+                output = filter;
+            }
+
+            output.connect(gain);
+            gain.gain.setValueAtTime(options.attack ? 0 : amp, time);
+            if (options.attack) gain.gain.linearRampToValueAtTime(amp, time + Math.max(0.001, options.attack));
+            if (options.decay) gain.gain.exponentialRampToValueAtTime(0.001, time + Math.max(0.002, options.decay));
+
+            if (Number.isFinite(options.pan) && audioCtx.createStereoPanner) {
+                const panner = audioCtx.createStereoPanner();
+                panner.pan.setValueAtTime(Math.max(-1, Math.min(1, options.pan)), time);
+                gain.connect(panner);
+                panner.connect(destination);
+            } else {
+                gain.connect(destination);
+            }
+
+            source.start(time);
+            voice.nodes.push(source);
+            return { source, gain };
+        }
+
         function noteOn(track, rowIdx, time, stepData = null, isKeyboard = false, doubledFromId = null) {
             if (isKeyboard && isArpEligibleTrack(track) && track.arp && track.arp.enabled) {
                 addArpHeldNote(track, rowIdx);
@@ -5412,7 +5841,7 @@
             const localGain = audioCtx.createGain();
             localGain.connect(track.filterNode);
 
-            const voice = { id: voiceId, track, rowIdx, gain: localGain, nodes: [], lfo: null, lfoGain: null, doubledFromId: doubledFromId, isArp: !!stepData?.arp, startTime: time, oneShot: !samplerUsesHeldGate(track) };
+            const voice = { id: voiceId, track, rowIdx, gain: localGain, nodes: [], lfo: null, lfoGain: null, doubledFromId: doubledFromId, isArp: !!stepData?.arp, startTime: time, oneShot: !isHeldVoice(track, rowIdx, template) };
             state.activeNotes.set(voiceId, voice);
 
             // Handle MIDI Doubling
@@ -5660,223 +6089,382 @@
 
                 let isWobbleOverride = false;
                 switch (track.typeId) {
-                    case 'synthwave':
-                        lp.frequency.setValueAtTime(freq * 6, time);
-                        lp.frequency.linearRampToValueAtTime(freq * 2.5, time + env.a + env.d);
-                        [-8, 0, 8].forEach((det, i) => {
-                            const o = audioCtx.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(startFreq, time); o.detune.value = det;
-                            if (targetFreq !== startFreq || isGlide) applyGlide(o.frequency, startFreq, targetFreq, time, glideDur, track.glideMode);
-                            const g = audioCtx.createGain(); g.gain.value = [0.28, 0.44, 0.28][i]; o.connect(g); g.connect(lp); o.start(time); voice.nodes.push(o);
+                    case 'synthwave': {
+                        const drive = createVoiceSaturator(2.1);
+                        drive.connect(lp);
+                        lp.Q.setValueAtTime(1.1, time);
+                        lp.frequency.setValueAtTime(Math.max(700, freq * 5.5), time);
+                        lp.frequency.linearRampToValueAtTime(Math.max(380, freq * 2.2), time + env.a + env.d * 0.8);
+                        [
+                            { det: -11, gain: 0.2, pan: -0.16 },
+                            { det: -3, gain: 0.24, pan: -0.04 },
+                            { det: 4, gain: 0.24, pan: 0.05 },
+                            { det: 12, gain: 0.18, pan: 0.18 }
+                        ].forEach(part => addVoiceOsc(voice, drive, 'sawtooth', startFreq, targetFreq, time, {
+                            gain: part.gain, detune: part.det, pan: part.pan, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
+                        }));
+                        addVoiceOsc(voice, drive, 'square', startFreq * 0.5, targetFreq * 0.5, time, {
+                            gain: 0.12, detune: -4, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
                         });
+                        addNoiseBurst(voice, drive, time, { duration: 0.035, gain: 0.018, decay: 0.028, filterType: 'highpass', frequency: 4500 });
                         break;
-                    case 'pad':
-                        lp.frequency.value = freq * 5;
-                        const pLfoG = track.voiceLfoEnabled ? createVoiceLfo(voice, track.wobbleRate || 4.5, freq * 0.007, time) : null;
-                        [{ type: 'sine', det: -10, g: 0.32 }, { type: 'triangle', det: 3, g: 0.30 }, { type: 'sine', det: 12, g: 0.22 }].forEach(d => {
-                            const o = audioCtx.createOscillator(); o.type = d.type; o.frequency.setValueAtTime(startFreq, time); o.detune.value = d.det;
-                            if (targetFreq !== startFreq || isGlide) applyGlide(o.frequency, startFreq, targetFreq, time, glideDur, track.glideMode);
-                            const g = audioCtx.createGain(); g.gain.value = d.g; if (pLfoG) pLfoG.connect(o.frequency); o.connect(g); g.connect(lp); o.start(time); voice.nodes.push(o);
+                    }
+                    case 'bass': {
+                        const bassDrive = createVoiceSaturator(1.7);
+                        const bassLp = audioCtx.createBiquadFilter();
+                        bassLp.type = 'lowpass';
+                        bassLp.Q.setValueAtTime(0.85, time);
+                        bassLp.frequency.setValueAtTime(Math.max(100, freq * 4.6), time);
+                        bassLp.frequency.linearRampToValueAtTime(Math.max(75, freq * 1.8), time + env.a + env.d);
+                        bassDrive.connect(bassLp);
+                        bassLp.connect(localGain);
+                        addVoiceOsc(voice, localGain, 'sine', startFreq * 0.5, targetFreq * 0.5, time, {
+                            gain: 0.48, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
                         });
+                        addVoiceOsc(voice, bassDrive, 'triangle', startFreq, targetFreq, time, {
+                            gain: 0.34, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
+                        });
+                        addVoiceOsc(voice, bassDrive, 'sawtooth', startFreq, targetFreq, time, {
+                            gain: 0.12, detune: -5, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
+                        });
+                        addNoiseBurst(voice, bassLp, time, { duration: 0.028, gain: 0.018, decay: 0.018, filterType: 'highpass', frequency: 1800 });
                         break;
-                    case 'pluck':
-                        const carrier = audioCtx.createOscillator(); const mod = audioCtx.createOscillator(); const modG = audioCtx.createGain();
-                        carrier.type = 'sine'; carrier.frequency.setValueAtTime(startFreq, time); mod.type = 'sine'; mod.frequency.setValueAtTime(startFreq * 2.0, time);
-                        modG.gain.setValueAtTime(freq * 5.5, time); modG.gain.exponentialRampToValueAtTime(freq * 0.3, time + 0.08); modG.gain.exponentialRampToValueAtTime(0.001, time + env.d);
+                    }
+                    case 'pad': {
+                        lp.Q.setValueAtTime(0.55, time);
+                        lp.frequency.setValueAtTime(Math.min(9000, Math.max(900, freq * 4.8)), time);
+                        const pLfoG = track.voiceLfoEnabled ? createVoiceLfo(voice, track.wobbleRate || 4.5, freq * 0.006, time) : null;
+                        [
+                            { type: 'sawtooth', det: -14, gain: 0.13, pan: -0.35 },
+                            { type: 'triangle', det: -5, gain: 0.2, pan: -0.12 },
+                            { type: 'sine', det: 0, gain: 0.26, pan: 0 },
+                            { type: 'triangle', det: 7, gain: 0.18, pan: 0.14 },
+                            { type: 'sawtooth', det: 16, gain: 0.11, pan: 0.36 }
+                        ].forEach(part => addVoiceOsc(voice, lp, part.type, startFreq, targetFreq, time, {
+                            gain: part.gain, detune: part.det, pan: part.pan, lfoGain: pLfoG, attack: 0.02, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
+                        }));
+                        break;
+                    }
+                    case 'pluck': {
+                        const glassFilter = audioCtx.createBiquadFilter();
+                        glassFilter.type = 'lowpass';
+                        glassFilter.Q.setValueAtTime(1.8, time);
+                        glassFilter.frequency.setValueAtTime(Math.min(12000, Math.max(1600, freq * 9)), time);
+                        glassFilter.frequency.exponentialRampToValueAtTime(Math.max(700, freq * 3.2), time + Math.max(0.08, env.d));
+                        glassFilter.connect(localGain);
+                        const carrier = audioCtx.createOscillator();
+                        const mod = audioCtx.createOscillator();
+                        const modG = audioCtx.createGain();
+                        carrier.type = 'sine';
+                        carrier.frequency.setValueAtTime(startFreq, time);
+                        mod.type = 'sine';
+                        mod.frequency.setValueAtTime(startFreq * 2.01, time);
+                        modG.gain.setValueAtTime(freq * 4.8, time);
+                        modG.gain.exponentialRampToValueAtTime(freq * 0.25, time + 0.07);
+                        modG.gain.exponentialRampToValueAtTime(0.001, time + Math.max(0.12, env.d));
                         if (targetFreq !== startFreq || isGlide) {
                             applyGlide(carrier.frequency, startFreq, targetFreq, time, glideDur, track.glideMode);
-                            applyGlide(mod.frequency, startFreq * 2.0, targetFreq * 2.0, time, glideDur, track.glideMode);
+                            applyGlide(mod.frequency, startFreq * 2.01, targetFreq * 2.01, time, glideDur, track.glideMode);
                         }
-                        mod.connect(modG); modG.connect(carrier.frequency); carrier.connect(localGain); mod.start(time); carrier.start(time); voice.nodes.push(mod, carrier);
+                        mod.connect(modG);
+                        modG.connect(carrier.frequency);
+                        carrier.connect(glassFilter);
+                        addVoiceOsc(voice, glassFilter, 'triangle', startFreq * 2, targetFreq * 2, time, {
+                            gain: 0.08, decay: 0.09, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
+                        });
+                        addNoiseBurst(voice, glassFilter, time, { duration: 0.025, gain: 0.025, decay: 0.018, filterType: 'highpass', frequency: 5000 });
+                        mod.start(time);
+                        carrier.start(time);
+                        voice.nodes.push(mod, carrier);
                         break;
-                    case 'piano':
-                        const pC = audioCtx.createOscillator(); pC.type = 'sine'; pC.frequency.setValueAtTime(startFreq, time);
-                        const pO = audioCtx.createOscillator(); pO.type = 'sine'; pO.frequency.setValueAtTime(startFreq * 2, time);
-                        const pH = audioCtx.createOscillator(); pH.type = 'triangle'; pH.frequency.setValueAtTime(startFreq * 4, time);
-                        if (targetFreq !== startFreq || isGlide) {
-                            applyGlide(pC.frequency, startFreq, targetFreq, time, glideDur, track.glideMode);
-                            applyGlide(pO.frequency, startFreq * 2, targetFreq * 2, time, glideDur, track.glideMode);
-                            applyGlide(pH.frequency, startFreq * 4, targetFreq * 4, time, glideDur, track.glideMode);
-                        }
-                        const cg = audioCtx.createGain(); cg.gain.value = 0.5; const og = audioCtx.createGain(); og.gain.value = 0.2; const hg = audioCtx.createGain(); hg.gain.value = 0.15;
-                        hg.gain.exponentialRampToValueAtTime(0.001, time + 0.05); pC.connect(cg); pO.connect(og); pH.connect(hg); cg.connect(localGain); og.connect(localGain); hg.connect(localGain);
-                        pC.start(time); pO.start(time); pH.start(time); voice.nodes.push(pC, pO, pH);
+                    }
+                    case 'arp': {
+                        const arpDrive = createVoiceSaturator(3.0);
+                        const arpFilter = audioCtx.createBiquadFilter();
+                        arpFilter.type = 'bandpass';
+                        arpFilter.Q.setValueAtTime(1.2, time);
+                        arpFilter.frequency.setValueAtTime(Math.min(7200, Math.max(650, freq * 4)), time);
+                        arpDrive.connect(arpFilter);
+                        arpFilter.connect(localGain);
+                        addVoiceOsc(voice, arpDrive, 'square', startFreq, targetFreq, time, {
+                            gain: 0.36, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
+                        });
+                        addVoiceOsc(voice, arpDrive, 'sawtooth', startFreq * 2, targetFreq * 2, time, {
+                            gain: 0.12, detune: -7, decay: 0.18, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
+                        });
                         break;
+                    }
+                    case 'piano': {
+                        const pianoBody = audioCtx.createBiquadFilter();
+                        pianoBody.type = 'lowpass';
+                        pianoBody.Q.setValueAtTime(0.55, time);
+                        pianoBody.frequency.setValueAtTime(6200, time);
+                        pianoBody.connect(localGain);
+                        [
+                            { type: 'sine', ratio: 1, gain: 0.52, decay: 0.9 },
+                            { type: 'triangle', ratio: 2.01, gain: 0.18, decay: 0.32 },
+                            { type: 'sine', ratio: 3.01, gain: 0.09, decay: 0.14 },
+                            { type: 'sine', ratio: 5.02, gain: 0.045, decay: 0.08 }
+                        ].forEach(part => addVoiceOsc(voice, pianoBody, part.type, startFreq * part.ratio, targetFreq * part.ratio, time, {
+                            gain: part.gain, decay: part.decay, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
+                        }));
+                        addNoiseBurst(voice, pianoBody, time, { duration: 0.018, gain: 0.018, decay: 0.012, filterType: 'highpass', frequency: 3500 });
+                        break;
+                    }
                     case 'acousticGuitar': case 'electricGuitar': {
                         const isElec = track.typeId === 'electricGuitar';
-
-                        // Main tone oscillators
-                        const o1 = audioCtx.createOscillator(); o1.type = 'sawtooth';
-                        o1.frequency.setValueAtTime(startFreq, time);
-                        const o2 = audioCtx.createOscillator(); o2.type = 'triangle';
-                        o2.frequency.setValueAtTime(startFreq * 2.01, time); // Slight detune for richness
-
-                        if (targetFreq !== startFreq || isGlide) {
-                            applyGlide(o1.frequency, startFreq, targetFreq, time, glideDur, track.glideMode);
-                            applyGlide(o2.frequency, startFreq * 2.01, targetFreq * 2.01, time, glideDur, track.glideMode);
-                        }
-
-                        // Tone shaping filter (internal to voice)
                         const toneFilter = audioCtx.createBiquadFilter();
                         toneFilter.type = 'lowpass';
-                        toneFilter.frequency.setValueAtTime(isElec ? 4000 : 6000, time);
-                        toneFilter.frequency.exponentialRampToValueAtTime(isElec ? 1500 : 800, time + 0.5);
-
-                        const g1 = audioCtx.createGain(); g1.gain.value = 0.4;
-                        const g2 = audioCtx.createGain(); g2.gain.value = 0.2;
-
-                        o1.connect(g1); g1.connect(toneFilter);
-                        o2.connect(g2); g2.connect(toneFilter);
-
+                        toneFilter.Q.setValueAtTime(isElec ? 0.9 : 1.4, time);
+                        toneFilter.frequency.setValueAtTime(isElec ? 4300 : 7200, time);
+                        toneFilter.frequency.exponentialRampToValueAtTime(isElec ? 1500 : 1200, time + 0.42);
                         if (isElec) {
-                            // Electric: Controlled Distortion + Cab Sim
-                            const dist = audioCtx.createWaveShaper();
-                            const curve = new Float32Array(44100);
-                            for (let i = 0; i < 44100; i++) {
-                                const x = i * 2 / 44100 - 1;
-                                curve[i] = Math.tanh(x * 5); // Gentler distortion
-                            }
-                            dist.curve = curve;
-
+                            const dist = createVoiceSaturator(3.2);
                             const cab = audioCtx.createBiquadFilter();
-                            cab.type = 'lowpass'; cab.frequency.value = 3200; cab.Q.value = 0.7;
-
+                            cab.type = 'lowpass';
+                            cab.frequency.setValueAtTime(3400, time);
+                            cab.Q.setValueAtTime(0.75, time);
                             toneFilter.connect(dist);
                             dist.connect(cab);
                             cab.connect(localGain);
-                            voice.nodes.push(dist, cab);
+                            addVoiceOsc(voice, toneFilter, 'sawtooth', startFreq, targetFreq, time, {
+                                gain: 0.32, detune: -4, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
+                            });
+                            addVoiceOsc(voice, toneFilter, 'triangle', startFreq * 2.01, targetFreq * 2.01, time, {
+                                gain: 0.13, decay: 0.42, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
+                            });
+                            addNoiseBurst(voice, toneFilter, time, { duration: 0.026, gain: 0.03, decay: 0.018, filterType: 'highpass', frequency: 2400 });
                         } else {
-                            // Acoustic: Body resonance
                             const body = audioCtx.createBiquadFilter();
-                            body.type = 'peaking'; body.frequency.value = 400; body.gain.value = 6; body.Q.value = 1.0;
+                            body.type = 'peaking';
+                            body.frequency.setValueAtTime(360, time);
+                            body.gain.setValueAtTime(5, time);
+                            body.Q.setValueAtTime(1.1, time);
                             toneFilter.connect(body);
                             body.connect(localGain);
-                            voice.nodes.push(body);
+                            addVoiceOsc(voice, toneFilter, 'triangle', startFreq, targetFreq, time, {
+                                gain: 0.36, decay: 0.7, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
+                            });
+                            addVoiceOsc(voice, toneFilter, 'sawtooth', startFreq * 2.02, targetFreq * 2.02, time, {
+                                gain: 0.1, decay: 0.18, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
+                            });
+                            addNoiseBurst(voice, toneFilter, time, { duration: 0.04, gain: 0.04, decay: 0.026, filterType: 'bandpass', frequency: 2600, q: 2.4 });
                         }
-
-                        o1.start(time); o2.start(time);
-                        voice.nodes.push(o1, o2, toneFilter, g1, g2);
                         break;
                     }
-                    case 'organ':
-                        [1, 2, 3, 4].forEach(h => {
-                            const o = audioCtx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(startFreq * h, time);
-                            if (targetFreq !== startFreq || isGlide) applyGlide(o.frequency, startFreq * h, targetFreq * h, time, glideDur, track.glideMode);
-                            const g = audioCtx.createGain(); g.gain.value = 0.5 / h; o.connect(g); g.connect(localGain); o.start(time); voice.nodes.push(o);
-                        });
+                    case 'organ': {
+                        const organBus = audioCtx.createGain();
+                        organBus.gain.setValueAtTime(0.9, time);
+                        organBus.connect(localGain);
+                        if (track.voiceLfoEnabled) createVoiceLfo(voice, track.wobbleRate || 5.8, 0.035, time).connect(organBus.gain);
+                        [
+                            { ratio: 1, gain: 0.42 },
+                            { ratio: 2, gain: 0.24 },
+                            { ratio: 3, gain: 0.13 },
+                            { ratio: 4, gain: 0.09 },
+                            { ratio: 6, gain: 0.045 }
+                        ].forEach(part => addVoiceOsc(voice, organBus, 'sine', startFreq * part.ratio, targetFreq * part.ratio, time, {
+                            gain: part.gain, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
+                        }));
+                        addNoiseBurst(voice, organBus, time, { duration: 0.02, gain: 0.014, decay: 0.014, filterType: 'highpass', frequency: 4200 });
                         break;
+                    }
                     case 'marimba': {
-                        // More stable additive Marimba
-                        const harmonics = [1, 4, 10];
-                        harmonics.forEach((h, i) => {
-                            const o = audioCtx.createOscillator();
-                            o.type = 'sine';
-                            o.frequency.setValueAtTime(startFreq * h, time);
-                            if (targetFreq !== startFreq || isGlide) applyGlide(o.frequency, startFreq * h, targetFreq * h, time, glideDur, track.glideMode);
-                            const g = audioCtx.createGain();
-                            g.gain.setValueAtTime(i === 0 ? 0.6 : 0.2 / i, time);
-                            g.gain.exponentialRampToValueAtTime(0.001, time + 0.12 * (1 / h));
-                            o.connect(g); g.connect(localGain);
-                            o.start(time); voice.nodes.push(o);
+                        const woodBody = audioCtx.createBiquadFilter();
+                        woodBody.type = 'lowpass';
+                        woodBody.frequency.setValueAtTime(5200, time);
+                        woodBody.Q.setValueAtTime(0.9, time);
+                        woodBody.connect(localGain);
+                        [
+                            { ratio: 1, gain: 0.52, decay: 0.38 },
+                            { ratio: 3.97, gain: 0.16, decay: 0.11 },
+                            { ratio: 9.2, gain: 0.07, decay: 0.055 }
+                        ].forEach(part => addVoiceOsc(voice, woodBody, 'sine', startFreq * part.ratio, targetFreq * part.ratio, time, {
+                            gain: part.gain, decay: part.decay, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
+                        }));
+                        addNoiseBurst(voice, woodBody, time, { duration: 0.018, gain: 0.035, decay: 0.012, filterType: 'bandpass', frequency: 1700, q: 3.5 });
+                        break;
+                    }
+                    case 'vibraphone': {
+                        const vLfoG = track.voiceLfoEnabled ? createVoiceLfo(voice, track.wobbleRate || 6, freq * 0.01, time) : null;
+                        [
+                            { ratio: 1, gain: 0.44, decay: 1.35, pan: -0.12 },
+                            { ratio: 2.01, gain: 0.18, decay: 0.9, pan: 0.14 },
+                            { ratio: 3.98, gain: 0.06, decay: 0.45, pan: 0.04 }
+                        ].forEach(part => addVoiceOsc(voice, localGain, 'sine', startFreq * part.ratio, targetFreq * part.ratio, time, {
+                            gain: part.gain, decay: part.decay, pan: part.pan, lfoGain: vLfoG, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
+                        }));
+                        break;
+                    }
+                    case 'brass': {
+                        const brassDrive = createVoiceSaturator(1.5);
+                        brassDrive.connect(lp);
+                        lp.Q.setValueAtTime(1.2, time);
+                        lp.frequency.setValueAtTime(Math.max(220, freq * 0.8), time);
+                        lp.frequency.linearRampToValueAtTime(Math.min(9000, Math.max(900, freq * 5.2)), time + Math.max(0.06, env.a + 0.08));
+                        [
+                            { type: 'sawtooth', det: -8, gain: 0.25, pan: -0.1 },
+                            { type: 'sawtooth', det: 3, gain: 0.28, pan: 0.08 },
+                            { type: 'square', det: 10, gain: 0.12, pan: 0 }
+                        ].forEach(part => addVoiceOsc(voice, brassDrive, part.type, startFreq, targetFreq, time, {
+                            gain: part.gain, detune: part.det, pan: part.pan, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
+                        }));
+                        break;
+                    }
+                    case 'flute': {
+                        const fluteBody = audioCtx.createBiquadFilter();
+                        fluteBody.type = 'lowpass';
+                        fluteBody.Q.setValueAtTime(0.65, time);
+                        fluteBody.frequency.setValueAtTime(Math.min(9000, Math.max(1600, freq * 7)), time);
+                        fluteBody.connect(localGain);
+                        const fLfoG = track.voiceLfoEnabled ? createVoiceLfo(voice, track.wobbleRate || 5, freq * 0.005, time) : null;
+                        addVoiceOsc(voice, fluteBody, 'sine', startFreq, targetFreq, time, {
+                            gain: 0.46, lfoGain: fLfoG, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
+                        });
+                        addVoiceOsc(voice, fluteBody, 'triangle', startFreq * 2, targetFreq * 2, time, {
+                            gain: 0.08, lfoGain: fLfoG, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
+                        });
+                        addNoiseBurst(voice, fluteBody, time, { duration: 0.5, loop: true, gain: 0.026, attack: 0.02, filterType: 'highpass', frequency: 2400, q: 0.7 });
+                        break;
+                    }
+                    case 'supersaw': {
+                        const sawDrive = createVoiceSaturator(1.35);
+                        const sawLp = audioCtx.createBiquadFilter();
+                        sawLp.type = 'lowpass';
+                        sawLp.Q.setValueAtTime(0.75, time);
+                        sawLp.frequency.setValueAtTime(Math.min(11000, Math.max(1400, freq * 6)), time);
+                        sawDrive.connect(sawLp);
+                        sawLp.connect(localGain);
+                        const dets = state.performanceMode === 'high'
+                            ? [-19, -12, -6, 0, 7, 13, 21]
+                            : [-15, -7, 0, 8, 16];
+                        dets.forEach((det, index) => {
+                            const spread = dets.length > 1 ? (index / (dets.length - 1)) * 2 - 1 : 0;
+                            addVoiceOsc(voice, sawDrive, 'sawtooth', startFreq, targetFreq, time, {
+                                gain: state.performanceMode === 'high' ? 0.105 : 0.15,
+                                detune: det,
+                                pan: spread * 0.42,
+                                glideDur,
+                                glideMode: track.glideMode,
+                                forceGlide: targetFreq !== startFreq || isGlide
+                            });
                         });
                         break;
                     }
-                    case 'vibraphone':
-                        const vLfoG = track.voiceLfoEnabled ? createVoiceLfo(voice, track.wobbleRate || 6, freq * 0.01, time) : null;
-                        const vO = audioCtx.createOscillator(); vO.type = 'sine'; vO.frequency.setValueAtTime(startFreq, time); if (vLfoG) vLfoG.connect(vO.frequency);
-                        if (targetFreq !== startFreq || isGlide) applyGlide(vO.frequency, startFreq, targetFreq, time, glideDur, track.glideMode);
-                        vO.connect(localGain); vO.start(time); voice.nodes.push(vO);
-                        break;
-                    case 'brass':
-                        lp.frequency.setValueAtTime(freq * 0.5, time); lp.frequency.exponentialRampToValueAtTime(freq * 4, time + 0.1);
-                        [{ t: 'sawtooth', d: 0 }, { t: 'sawtooth', d: 5 }, { t: 'square', d: -5 }].forEach(d => {
-                            const o = audioCtx.createOscillator(); o.type = d.t; o.frequency.setValueAtTime(startFreq, time); o.detune.value = d.d;
-                            if (targetFreq !== startFreq || isGlide) applyGlide(o.frequency, startFreq, targetFreq, time, glideDur, track.glideMode);
-                            const g = audioCtx.createGain(); g.gain.value = 0.3; o.connect(g); g.connect(lp); o.start(time); voice.nodes.push(o);
+                    case 'wobblebass': {
+                        const wobbleDrive = createVoiceSaturator(2.8);
+                        wobbleDrive.connect(lp);
+                        const wLfoG = createVoiceLfo(voice, track.wobbleRate || (state.bpm / 60) * 2, 650, time);
+                        lp.frequency.setValueAtTime(Math.max(500, freq * 5), time);
+                        wLfoG.connect(lp.frequency);
+                        lp.Q.setValueAtTime(9.5, time);
+                        addVoiceOsc(voice, localGain, 'sine', startFreq * 0.5, targetFreq * 0.5, time, {
+                            gain: 0.34, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
                         });
-                        break;
-                    case 'flute':
-                        const fLfoG = track.voiceLfoEnabled ? createVoiceLfo(voice, track.wobbleRate || 5, freq * 0.005, time) : null;
-                        const fO = audioCtx.createOscillator(); fO.type = 'sine'; fO.frequency.setValueAtTime(startFreq, time); if (fLfoG) fLfoG.connect(fO.frequency);
-                        const fN = audioCtx.createBufferSource(); const fB = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.1, audioCtx.sampleRate); for (let i = 0; i < fB.length; i++) fB.getChannelData(0)[i] = Math.random() * 0.1;
-                        fN.buffer = fB; const fNG = audioCtx.createGain(); fNG.gain.setValueAtTime(0.2, time); fNG.gain.exponentialRampToValueAtTime(0.001, time + 0.05); fN.connect(fNG); fNG.connect(localGain);
-                        if (targetFreq !== startFreq || isGlide) applyGlide(fO.frequency, startFreq, targetFreq, time, glideDur, track.glideMode);
-                        fO.connect(localGain); fO.start(time); fN.start(time); voice.nodes.push(fO, fN);
-                        break;
-                    case 'supersaw':
-                        const dets = state.performanceMode === 'high' ? [-15, -7, 0, 7, 15] : [-10, 0, 10];
-                        dets.forEach(det => {
-                            const o = audioCtx.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(startFreq, time); o.detune.value = det;
-                            if (targetFreq !== startFreq || isGlide) applyGlide(o.frequency, startFreq, targetFreq, time, glideDur, track.glideMode);
-                            const g = audioCtx.createGain(); g.gain.value = state.performanceMode === 'high' ? 0.15 : 0.25; o.connect(g); g.connect(localGain); o.start(time); voice.nodes.push(o);
+                        addVoiceOsc(voice, wobbleDrive, 'sawtooth', startFreq, targetFreq, time, {
+                            gain: 0.34, detune: -5, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
                         });
-                        break;
-                    case 'wobblebass':
-                        const wLfoG = createVoiceLfo(voice, track.wobbleRate || (state.bpm / 60) * 2, 1400, time);
-                        lp.frequency.setValueAtTime(1500, time); wLfoG.connect(lp.frequency);
-                        lp.Q.setValueAtTime(12, time);
-                        const wO = audioCtx.createOscillator(); wO.type = 'sawtooth'; wO.frequency.setValueAtTime(startFreq, time);
-                        if (targetFreq !== startFreq || isGlide) applyGlide(wO.frequency, startFreq, targetFreq, time, glideDur, track.glideMode);
-                        wO.connect(lp); wO.start(time); voice.nodes.push(wO);
-
+                        addVoiceOsc(voice, wobbleDrive, 'square', startFreq, targetFreq, time, {
+                            gain: 0.14, detune: 6, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
+                        });
                         localGain.gain.setValueAtTime(0, time);
-                        localGain.gain.linearRampToValueAtTime(0.75, time + env.a);
-                        localGain.gain.linearRampToValueAtTime(env.s * 0.75, time + env.a + env.d);
+                        localGain.gain.linearRampToValueAtTime(0.86, time + env.a);
+                        localGain.gain.linearRampToValueAtTime(env.s * 0.82, time + env.a + env.d);
                         isWobbleOverride = true;
                         break;
-                    case 'celeste':
-                        const cO = audioCtx.createOscillator(); cO.type = 'sine'; cO.frequency.setValueAtTime(startFreq, time);
-                        const cO2 = audioCtx.createOscillator(); cO2.type = 'sine'; cO2.frequency.setValueAtTime(startFreq * 4, time);
-                        const cG2 = audioCtx.createGain(); cG2.gain.setValueAtTime(0.2, time); cG2.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
-                        if (targetFreq !== startFreq || isGlide) {
-                            applyGlide(cO.frequency, startFreq, targetFreq, time, glideDur, track.glideMode);
-                            applyGlide(cO2.frequency, startFreq * 4, targetFreq * 4, time, glideDur, track.glideMode);
-                        }
-                        cO.connect(localGain); cO2.connect(cG2); cG2.connect(localGain); cO.start(time); cO2.start(time); voice.nodes.push(cO, cO2);
+                    }
+                    case 'celeste': {
+                        [
+                            { ratio: 1, gain: 0.36, decay: 0.8, pan: -0.08 },
+                            { ratio: 2.02, gain: 0.13, decay: 0.36, pan: 0.1 },
+                            { ratio: 4.03, gain: 0.15, decay: 0.22, pan: 0.05 },
+                            { ratio: 5.01, gain: 0.055, decay: 0.12, pan: -0.02 }
+                        ].forEach(part => addVoiceOsc(voice, localGain, 'sine', startFreq * part.ratio, targetFreq * part.ratio, time, {
+                            gain: part.gain, decay: part.decay, pan: part.pan, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
+                        }));
                         break;
-                    case 'clavinet':
-                        lp.frequency.setValueAtTime(freq, time); lp.frequency.exponentialRampToValueAtTime(freq * 6, time + 0.05); lp.frequency.exponentialRampToValueAtTime(freq * 0.5, time + 0.2);
-                        const clO = audioCtx.createOscillator(); clO.type = 'square'; clO.frequency.setValueAtTime(startFreq, time);
-                        const clG = audioCtx.createGain(); const clSh = audioCtx.createWaveShaper(); const clC = new Float32Array(44100); for (let i = 0; i < 44100; i++) { const x = i * 2 / 44100 - 1; clC[i] = (3 + 10) * x / (Math.PI + 10 * Math.abs(x)); } clSh.curve = clC;
-                        if (targetFreq !== startFreq || isGlide) applyGlide(clO.frequency, startFreq, targetFreq, time, glideDur, track.glideMode);
-                        clO.connect(clSh); clSh.connect(lp); clO.start(time); voice.nodes.push(clO);
+                    }
+                    case 'clavinet': {
+                        const clDrive = createVoiceSaturator(3.4);
+                        clDrive.connect(lp);
+                        lp.Q.setValueAtTime(2.6, time);
+                        lp.frequency.setValueAtTime(Math.max(400, freq * 2), time);
+                        lp.frequency.linearRampToValueAtTime(Math.min(8500, Math.max(1200, freq * 7)), time + 0.035);
+                        lp.frequency.linearRampToValueAtTime(Math.max(320, freq * 1.3), time + 0.22);
+                        addVoiceOsc(voice, clDrive, 'square', startFreq, targetFreq, time, {
+                            gain: 0.36, decay: 0.25, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
+                        });
+                        addVoiceOsc(voice, clDrive, 'sawtooth', startFreq * 2, targetFreq * 2, time, {
+                            gain: 0.1, decay: 0.09, detune: -6, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
+                        });
+                        addNoiseBurst(voice, clDrive, time, { duration: 0.016, gain: 0.03, decay: 0.01, filterType: 'highpass', frequency: 3800 });
                         break;
-                    case 'theremin':
+                    }
+                    case 'theremin': {
+                        const thereminBody = audioCtx.createBiquadFilter();
+                        thereminBody.type = 'lowpass';
+                        thereminBody.Q.setValueAtTime(0.7, time);
+                        thereminBody.frequency.setValueAtTime(Math.min(6000, Math.max(1200, freq * 5.5)), time);
+                        thereminBody.connect(localGain);
                         const tLfoG = createVoiceLfo(voice, track.wobbleRate || 5.5, freq * 0.02, time);
-                        const tO = audioCtx.createOscillator(); tO.type = 'sine'; tO.frequency.setValueAtTime(startFreq, time); tLfoG.connect(tO.frequency);
-                        if (targetFreq !== startFreq || isGlide) applyGlide(tO.frequency, startFreq, targetFreq, time, glideDur, track.glideMode);
-                        tO.connect(localGain); tO.start(time); voice.nodes.push(tO);
+                        addVoiceOsc(voice, thereminBody, 'sine', startFreq, targetFreq, time, {
+                            gain: 0.48, lfoGain: tLfoG, glideDur, glideMode: track.glideMode, forceGlide: true
+                        });
+                        addVoiceOsc(voice, thereminBody, 'triangle', startFreq * 2, targetFreq * 2, time, {
+                            gain: 0.07, lfoGain: tLfoG, glideDur, glideMode: track.glideMode, forceGlide: true
+                        });
                         break;
-                    case 'whiteNoise':
-                        const nB = audioCtx.createBuffer(1, audioCtx.sampleRate * 2, audioCtx.sampleRate);
-                        const nD = nB.getChannelData(0);
-                        for (let i = 0; i < nB.length; i++) nD[i] = Math.random() * 2 - 1;
-                        const nS = audioCtx.createBufferSource(); nS.buffer = nB; nS.loop = true;
-                        nS.connect(localGain); nS.start(time); voice.nodes.push(nS);
+                    }
+                    case 'whiteNoise': {
+                        const noiseSource = audioCtx.createBufferSource();
+                        noiseSource.buffer = createNoiseBuffer(1.4);
+                        noiseSource.loop = true;
+                        const noiseHp = audioCtx.createBiquadFilter();
+                        noiseHp.type = 'highpass';
+                        noiseHp.frequency.setValueAtTime(180, time);
+                        noiseHp.Q.setValueAtTime(0.65, time);
+                        const noiseBp = audioCtx.createBiquadFilter();
+                        noiseBp.type = 'bandpass';
+                        noiseBp.Q.setValueAtTime(0.9, time);
+                        noiseBp.frequency.setValueAtTime(Math.min(10000, Math.max(220, freq * 4)), time);
+                        noiseSource.connect(noiseHp);
+                        noiseHp.connect(noiseBp);
+                        noiseBp.connect(localGain);
+                        noiseSource.start(time);
+                        voice.nodes.push(noiseSource);
                         break;
+                    }
                     case 'bassGuitar':
                     case 'bassguitar': {
-                        // Calculate the target note after applying octave offsets
                         const baseOct = track.baseOctaveOffset || 0;
                         const userOct = track.octaveOffset || 0;
                         const originalOct = parseInt(rowName.slice(-1));
                         const targetOct = originalOct + baseOct + userOct;
                         const noteBase = rowName.slice(0, -1);
                         const shiftedNoteName = noteBase + targetOct;
-
+                        const bassBody = audioCtx.createBiquadFilter();
+                        bassBody.type = 'lowpass';
+                        bassBody.Q.setValueAtTime(0.8, time);
+                        bassBody.frequency.setValueAtTime(1650, time);
+                        bassBody.connect(localGain);
                         const cacheKey = `Guitar ${shiftedNoteName}`;
                         if (mcp2000_cache[cacheKey]) {
+                            const sampleDrive = createVoiceSaturator(1.35);
                             const source = audioCtx.createBufferSource();
                             source.buffer = mcp2000_cache[cacheKey];
-                            source.connect(localGain);
+                            source.connect(sampleDrive);
+                            sampleDrive.connect(bassBody);
                             source.start(time);
                             voice.nodes.push(source);
                         } else {
-                            // Fallback to triangle if out of range
-                            const defO = audioCtx.createOscillator(); defO.type = 'triangle';
-                            defO.frequency.setValueAtTime(freq, time);
-                            if (targetFreq !== startFreq || isGlide) applyGlide(defO.frequency, startFreq, targetFreq, time, glideDur, track.glideMode);
-                            defO.connect(localGain); defO.start(time); voice.nodes.push(defO);
+                            addVoiceOsc(voice, bassBody, 'triangle', startFreq, targetFreq, time, {
+                                gain: 0.48, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
+                            });
+                            addVoiceOsc(voice, bassBody, 'sawtooth', startFreq * 2, targetFreq * 2, time, {
+                                gain: 0.08, decay: 0.18, glideDur, glideMode: track.glideMode, forceGlide: targetFreq !== startFreq || isGlide
+                            });
                         }
+                        addNoiseBurst(voice, bassBody, time, { duration: 0.022, gain: 0.024, decay: 0.014, filterType: 'highpass', frequency: 1300 });
                         break;
                     }
                     default:
@@ -6211,6 +6799,7 @@
         }
 
         function scheduler() {
+            toneBridge.setBpm(state.bpm);
             const sigVal = document.getElementById('sig-input')?.value;
             if (sigVal) state.timeSignature = parseInt(sigVal);
 
@@ -6253,6 +6842,8 @@
         const playBtn = document.getElementById('play-btn');
         playBtn.onclick = () => {
             if (audioCtx.state === 'suspended') audioCtx.resume();
+            toneBridge.start();
+            toneBridge.setBpm(state.bpm);
             state.isPlaying = !state.isPlaying;
             if (state.isPlaying) {
                 state.currentStep = 0; nextNoteTime = audioCtx.currentTime;
@@ -6444,10 +7035,11 @@
             exportBtn.classList.add('active');
 
             const dest = audioCtx.createMediaStreamDestination();
-            masterGain.connect(dest);
+            masterAnalyser.connect(dest);
 
             const mimeType = getMimeType();
             if (!mimeType) {
+                try { masterAnalyser.disconnect(dest); } catch (e) { }
                 alert("Recording not supported in this browser.");
                 state.isExporting = false;
                 return;
@@ -6457,6 +7049,7 @@
             mediaRecorder = new MediaRecorder(dest.stream, { mimeType, audioBitsPerSecond: 192000 });
             mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
             mediaRecorder.onstop = () => {
+                try { masterAnalyser.disconnect(dest); } catch (e) { }
                 const blob = new Blob(recordedChunks, { type: mimeType });
                 const isMp3 = mimeType.includes('mpeg') || mimeType.includes('mp3');
                 const ext = isMp3 ? 'mp3' : (mimeType.includes('ogg') ? 'ogg' : 'webm');
@@ -6557,6 +7150,7 @@
         bpmInput.onchange = (e) => {
             pushUndo();
             state.bpm = parseInt(e.target.value);
+            toneBridge.setBpm(state.bpm);
             renderFxPanels();
         };
         document.getElementById('sig-input').onchange = (e) => {
@@ -7169,27 +7763,45 @@
             oscCtx.shadowBlur = 8; oscCtx.shadowColor = 'var(--accent-cyan)';
             oscCtx.beginPath();
             const sliceWidth = oscCanvas.width / bufferLength; let x = 0;
+            let masterPeak = 0, masterSquareTotal = 0, masterClipSamples = 0;
             for (let i = 0; i < bufferLength; i++) {
+                const centered = (masterDataArray[i] - 128) / 128;
+                const abs = Math.abs(centered);
+                masterPeak = Math.max(masterPeak, abs);
+                masterSquareTotal += centered * centered;
+                if (abs >= 0.985) masterClipSamples++;
                 const v = masterDataArray[i] / 128.0; const y = v * oscCanvas.height / 2;
                 if (i === 0) oscCtx.moveTo(x, y); else oscCtx.lineTo(x, y); x += sliceWidth;
             }
+            const limiterReduction = Math.abs(masterLimiter.reduction || 0);
+            masterMeterState.peak = masterPeak;
+            masterMeterState.rms = Math.sqrt(masterSquareTotal / bufferLength);
+            masterMeterState.limiterReduction = limiterReduction;
+            const clipping = masterClipSamples > 0 || limiterReduction > 6;
+            masterMeterState.clipHold = clipping ? 12 : Math.max(0, masterMeterState.clipHold - 1);
+            masterMeterState.clipping = masterMeterState.clipHold > 0;
             oscCtx.stroke();
             oscCtx.shadowBlur = 0;
 
             masterAnalyser.getByteFrequencyData(masterDataArray);
             specCtx.fillStyle = '#050507'; specCtx.fillRect(0, 0, specCanvas.width, specCanvas.height);
-            const barWidth = (specCanvas.width / (bufferLength / 4)); let barX = 0; let sum = 0;
+            const barWidth = (specCanvas.width / (bufferLength / 4)); let barX = 0;
             for (let i = 0; i < bufferLength / 4; i++) {
-                const barHeight = (masterDataArray[i] / 255) * specCanvas.height; sum += masterDataArray[i];
+                const barHeight = (masterDataArray[i] / 255) * specCanvas.height;
                 const hue = 180 + (i / (bufferLength / 4)) * 120;
                 specCtx.fillStyle = `hsla(${hue}, 100%, 50%, 0.8)`;
                 specCtx.fillRect(barX, specCanvas.height - barHeight, barWidth - 1, barHeight);
                 barX += barWidth;
             }
-            const meterWidth = Math.min(100, ((sum / (bufferLength / 4)) / 128) * 100);
+            const meterWidth = Math.min(100, Math.max(masterMeterState.rms * 155, masterMeterState.peak * 82));
             meterFill.style.width = meterWidth + '%';
-            meterFill.style.background = `linear-gradient(90deg, var(--accent-cyan), var(--accent-purple))`;
-            meterFill.style.boxShadow = `0 0 10px rgba(0, 242, 255, 0.3)`;
+            if (masterMeterState.clipping) {
+                meterFill.style.background = `linear-gradient(90deg, var(--accent-yellow), var(--accent-pink))`;
+                meterFill.style.boxShadow = `0 0 10px rgba(255, 42, 109, 0.45)`;
+            } else {
+                meterFill.style.background = `linear-gradient(90deg, var(--accent-cyan), var(--accent-purple))`;
+                meterFill.style.boxShadow = `0 0 10px rgba(0, 242, 255, 0.3)`;
+            }
 
             state.tracks.forEach((track, index) => {
                 if (!track.analyserDataArray) track.analyserDataArray = new Uint8Array(track.analyser.frequencyBinCount);
@@ -7276,6 +7888,7 @@
             // 1. Restore Global Settings
             if (data.bpm) {
                 state.bpm = data.bpm;
+                toneBridge.setBpm(state.bpm);
                 const bpmIn = document.getElementById('bpm-input');
                 if (bpmIn) bpmIn.value = state.bpm;
             }
